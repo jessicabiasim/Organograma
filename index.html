@@ -648,7 +648,7 @@ const AVATAR_COLORS = [
   ['#F9EEF3','#A03060'],['#EDFAF5','#00806A'],
 ];
 
-let state = { clients:[], roles:[], areas:[], people:[], leaders:[], drag:null, companyLogo:COMPANY_LOGO_DEFAULT };
+let state = { clients:[], roles:[], areas:[], people:[], leaders:[], drag:null, dragAfter:null, companyLogo:COMPANY_LOGO_DEFAULT };
 let modalMode = null;
 
 function uid() { return Math.random().toString(36).slice(2,9); }
@@ -906,19 +906,41 @@ function onDragEnd() {
 function onDragOver(e, cid, rid) {
   e.preventDefault();
   e.currentTarget.classList.add('drag-over');
+  // Store which card we're hovering over for precise insertion
+  const afterEl = getDragAfterElement(e.currentTarget, e.clientY);
+  state.dragAfter = afterEl ? afterEl.dataset.id : null;
+}
+
+function getDragAfterElement(container, y) {
+  const draggableEls = [...container.querySelectorAll('.card:not(.dragging)')];
+  return draggableEls.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) {
+      return { offset, element: child };
+    }
+    return closest;
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 function onDragLeave(e) {
   e.currentTarget.classList.remove('drag-over');
 }
 function onDrop(e, cid, rid) {
-  // Legacy: used by unassigned pool (no area)
+  // Unassigned pool
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
   if (!state.drag) return;
-  const p = state.people.find(p => p.id === state.drag);
-  if (!p) return;
-  p.client = cid || null;
+  const dragId = state.drag;
   state.drag = null;
+  state.dragAfter = null;
+
+  const idx = state.people.findIndex(p => p.id === dragId);
+  if (idx === -1) return;
+  const [p] = state.people.splice(idx, 1);
+  p.client = null;
+  p.area = null;
+  state.people.push(p);
+
   save(); render();
 }
 
@@ -926,11 +948,41 @@ function onDropArea(e, cid, areaId) {
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
   if (!state.drag) return;
-  const p = state.people.find(p => p.id === state.drag);
-  if (!p) return;
+  const dragId = state.drag;
+  const afterId = state.dragAfter || null;
+  state.drag = null;
+  state.dragAfter = null;
+
+  // Remove from current position
+  const idx = state.people.findIndex(p => p.id === dragId);
+  if (idx === -1) return;
+  const [p] = state.people.splice(idx, 1);
+
+  // Update client/area
   p.client = cid || null;
   p.area = areaId || null;
-  state.drag = null;
+
+  // Insert at right position
+  if (afterId) {
+    const afterIdx = state.people.findIndex(p => p.id === afterId);
+    if (afterIdx !== -1) {
+      state.people.splice(afterIdx, 0, p);
+    } else {
+      state.people.push(p);
+    }
+  } else {
+    // Drop at end of zone — find last person in this client+area and insert after
+    let lastIdx = -1;
+    state.people.forEach((person, i) => {
+      if (person.client === cid && person.area === areaId) lastIdx = i;
+    });
+    if (lastIdx !== -1) {
+      state.people.splice(lastIdx + 1, 0, p);
+    } else {
+      state.people.push(p);
+    }
+  }
+
   save(); render();
 }
 
