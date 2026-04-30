@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organograma de Times</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root {
+    --bg: #F7F6F3;
+    --surface: #FFFFFF;
+    --surface2: #F0EEE9;
+    --border: #E2DED6;
+    --border2: #CCC9C0;
+    --text: #1A1916;
+    --text2: #6B6860;
+    --text3: #9B9890;
+    --accent: #1A1916;
+    --accent-fg: #F7F6F3;
+    --blue: #2B5BE0;
+    --blue-light: #EBF0FF;
+    --blue-mid: #ADC0F7;
+    --red: #C0392B;
+    --red-light: #FDECEA;
+    --green: #1A7A4A;
+    --green-light: #E8F6EE;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: var(--accent);
+    color: var(--accent-fg);
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .app-header h1 {
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: -0.2px;
+  }
+  .app-header .subtitle {
+    font-size: 12px;
+    opacity: 0.5;
+    font-family: 'DM Mono', monospace;
+    margin-left: 12px;
+  }
+  .header-left { display: flex; align-items: baseline; gap: 0; }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 28px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover { background: var(--surface2); border-color: var(--text3); }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+  }
+  .btn.primary:hover { background: #333; }
+  .btn.blue {
+    background: var(--blue);
+    color: #fff;
+    border-color: var(--blue);
+  }
+  .btn.blue:hover { background: #2249c0; }
+  .btn.danger { color: var(--red); border-color: #F5C6C2; background: var(--red-light); }
+  .btn.danger:hover { background: #FBDAD8; }
+  .btn.success { color: var(--green); border-color: #A8DFC0; background: var(--green-light); }
+  .btn.success:hover { background: #D4F0E2; }
+  .sep { width: 1px; height: 20px; background: var(--border); }
+  .btn-icon { font-size: 14px; line-height: 1; }
+
+  /* ── BOARD ── */
+  .board-wrap {
+    padding: 24px 28px;
+    overflow-x: auto;
+    min-height: calc(100vh - 160px);
+  }
+  .board {
+    display: flex;
+    gap: 12px;
+    min-width: max-content;
+    align-items: flex-start;
+  }
+
+  /* ── COLUMN ── */
+  .col {
+    width: 210px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .col-header {
+    background: var(--accent);
+    color: var(--accent-fg);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .col-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  .col-logo {
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    object-fit: contain;
+    background: rgba(255,255,255,0.15);
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .col-header-name {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* ── DRAG ROLES ── */
+  .role-row[draggable="true"] { cursor: grab; }
+  .role-row.dragging-role { opacity: 0.35; }
+  .role-row.drag-role-over { outline: 2px dashed var(--blue); outline-offset: 2px; border-radius: var(--radius); }
+  .role-drag-handle {
+    color: var(--text3);
+    font-size: 11px;
+    cursor: grab;
+    padding: 0 3px;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .col-header-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .col-icon-btn {
+    background: rgba(255,255,255,0.12);
+    border: none;
+    color: rgba(255,255,255,0.8);
+    font-size: 11px;
+    width: 22px; height: 22px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.1s;
+  }
+  .col-icon-btn:hover { background: rgba(255,255,255,0.22); color: #fff; }
+  .col-body { padding: 10px; }
+
+  /* ── ROLE ROW ── */
+  .role-row { margin-bottom: 8px; }
+  .role-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+    padding: 0 4px 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .role-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .drop-zone {
+    min-height: 52px;
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: all 0.12s;
+  }
+  .drop-zone.has-cards { border-color: transparent; background: transparent; }
+  .drop-zone.drag-over {
+    border-color: var(--blue);
+    background: var(--blue-light);
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 9px;
+    cursor: grab;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    transition: border-color 0.12s, box-shadow 0.12s, opacity 0.12s;
+    position: relative;
+  }
+  .card:hover { border-color: var(--border2); box-shadow: var(--shadow); }
+  .card.dragging { opacity: 0.3; cursor: grabbing; }
+  .drop-zone.has-cards .card { background: var(--bg); }
+
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+  .card-info { flex: 1; min-width: 0; }
+  .card-name { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-role { font-size: 10px; color: var(--text2); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-date { font-size: 10px; color: var(--text3); margin-top: 1px; font-family: 'DM Mono', monospace; }
+  .card-del {
+    position: absolute; top: 5px; right: 6px;
+    font-size: 10px; color: var(--text3);
+    cursor: pointer; opacity: 0;
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 3px;
+    transition: opacity 0.1s;
+  }
+  .card:hover .card-del { opacity: 1; }
+  .card-del:hover { background: var(--red-light); color: var(--red); }
+
+  /* ── UNASSIGNED ── */
+  .unassigned-section {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 16px 28px;
+  }
+  .unassigned-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .unassigned-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+  }
+  .badge {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    background: var(--surface2);
+    color: var(--text2);
+    padding: 1px 7px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+  .unassigned-pool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 52px;
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius-lg);
+    padding: 8px;
+    transition: all 0.12s;
+  }
+  .unassigned-pool.drag-over { border-color: var(--blue); background: var(--blue-light); }
+  .unassigned-pool .card { width: 190px; background: var(--bg); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(26,25,22,0.4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 24px;
+    width: 340px;
+    max-width: 95vw;
+    box-shadow: var(--shadow-lg);
+    animation: modalIn 0.15s ease;
+  }
+  @keyframes modalIn { from { opacity:0; transform: translateY(8px) scale(0.97); } to { opacity:1; transform: none; } }
+  .modal-title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+  .form-group { margin-bottom: 12px; }
+  .form-label { font-size: 11px; font-weight: 500; color: var(--text2); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-input, .form-select {
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 8px 11px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color 0.12s;
+    outline: none;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--blue); background: #fff; }
+  .photo-preview { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); display: none; margin-top: 6px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  .modal-extra { padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--border); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(8px);
+    background: var(--accent); color: var(--accent-fg);
+    padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; font-weight: 500;
+    opacity: 0; transition: all 0.2s;
+    pointer-events: none; white-space: nowrap;
+    z-index: 300;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── PRINT ── */
+  @media print {
+    .toolbar, .app-header, .unassigned-section, .card-del, .col-icon-btn { display: none !important; }
+    .board-wrap { padding: 0; }
+    body { background: white; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-left">
+    <h1>Organograma de Times</h1>
+    <span class="subtitle">reunião de estruturação</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn success" onclick="exportJSON()">
+      <span class="btn-icon">↓</span> Exportar dados
+    </button>
+    <button class="btn blue" onclick="document.getElementById('import-input').click()">
+      <span class="btn-icon">↑</span> Importar dados
+    </button>
+    <button class="btn" onclick="exportPNG()">
+      <span class="btn-icon">◼</span> Salvar como imagem
+    </button>
+    <input type="file" id="import-input" accept=".json" style="display:none" onchange="importJSON(event)">
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="btn primary" onclick="openAddPerson()">
+    <span class="btn-icon">+</span> Funcionário
+  </button>
+  <button class="btn" onclick="openAddClient()">
+    <span class="btn-icon">+</span> Cliente
+  </button>
+  <button class="btn" onclick="openAddRole()">
+    <span class="btn-icon">+</span> Cargo
+  </button>
+  <div class="sep"></div>
+  <button class="btn" onclick="openManageRoles()">⚙ Gerenciar cargos</button>
+  <div class="sep"></div>
+  <button class="btn danger" onclick="clearAll()">✕ Limpar tudo</button>
+</div>
+
+<div class="board-wrap">
+  <div class="board" id="board"></div>
+</div>
+
+<div class="unassigned-section">
+  <div class="unassigned-header">
+    <span class="unassigned-title">Sem cliente alocado</span>
+    <span class="badge" id="unassigned-count">0</span>
+  </div>
+  <div class="unassigned-pool" id="unassigned-pool"
+    ondragover="onDragOver(event,null,null)"
+    ondragleave="onDragLeave(event)"
+    ondrop="onDrop(event,null,null)">
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-box">
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModalDirect()">Cancelar</button>
+      <button class="btn primary" id="modal-confirm" onclick="confirmModal()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const AVATAR_COLORS = [
+  ['#EBF0FF','#2B5BE0'],['#E8F6EE','#1A7A4A'],['#FFF3E8','#B85A00'],
+  ['#F5EEF9','#7B3FA0'],['#FEF3E2','#A06000'],['#E8F4FF','#0066AA'],
+  ['#F9EEF3','#A03060'],['#EDFAF5','#00806A'],
+];
+
+let state = { clients:[], roles:[], people:[], drag:null };
+let modalMode = null;
+
+function uid() { return Math.random().toString(36).slice(2,9); }
+function colorFor(name) {
+  let h = 0;
+  for (let c of name) h = (h * 31 + c.charCodeAt(0)) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[h];
+}
+function initials(n) {
+  return n.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+}
+function fmtDate(d) {
+  if (!d) return '';
+  const [y,m,dd] = d.split('-');
+  return `${dd}/${m}/${y}`;
+}
+
+function save() {
+  try { localStorage.setItem('org_v2', JSON.stringify(state)); } catch(e) {}
+}
+function load() {
+  try {
+    const s = localStorage.getItem('org_v2');
+    if (s) state = JSON.parse(s);
+  } catch(e) {}
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function render() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+
+  state.clients.forEach(cl => {
+    const col = document.createElement('div');
+    col.className = 'col';
+
+    const logoHtml = cl.logo
+      ? `<img class="col-logo" src="${cl.logo}" alt="${cl.name}">`
+      : '';
+    col.innerHTML = `
+      <div class="col-header">
+        <div class="col-header-left">
+          ${logoHtml}
+          <span class="col-header-name" title="${cl.name}">${cl.name}</span>
+        </div>
+        <div class="col-header-actions">
+          <button class="col-icon-btn" onclick="editClient('${cl.id}')" title="Editar">✎</button>
+        </div>
+      </div>
+      <div class="col-body" id="col-body-${cl.id}"></div>`;
+
+    const body = col.querySelector('.col-body');
+
+    state.roles.forEach(role => {
+      const rr = document.createElement('div');
+      rr.className = 'role-row';
+
+      const lbl = document.createElement('div');
+      lbl.className = 'role-label';
+      lbl.textContent = role.name;
+
+      const dz = document.createElement('div');
+      dz.className = 'drop-zone';
+      dz.dataset.client = cl.id;
+      dz.dataset.role = role.id;
+      dz.ondragover = e => onDragOver(e, cl.id, role.id);
+      dz.ondragleave = e => onDragLeave(e);
+      dz.ondrop = e => onDrop(e, cl.id, role.id);
+
+      const here = state.people.filter(p => p.client === cl.id && p.role === role.id);
+      here.forEach(p => dz.appendChild(makeCard(p)));
+      if (here.length) dz.classList.add('has-cards');
+
+      rr.appendChild(lbl);
+      rr.appendChild(dz);
+      body.appendChild(rr);
+    });
+
+    board.appendChild(col);
+  });
+
+  const pool = document.getElementById('unassigned-pool');
+  pool.innerHTML = '';
+  const unassigned = state.people.filter(p => !p.client);
+  unassigned.forEach(p => pool.appendChild(makeCard(p)));
+  document.getElementById('unassigned-count').textContent = unassigned.length;
+}
+
+function makeCard(p) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.draggable = true;
+  card.dataset.id = p.id;
+  card.ondragstart = e => onDragStart(e, p.id);
+  card.ondragend = onDragEnd;
+
+  const [bg, fg] = colorFor(p.name);
+  const avatarHtml = p.photo
+    ? `<div class="avatar"><img src="${p.photo}" alt="${initials(p.name)}"></div>`
+    : `<div class="avatar" style="background:${bg};color:${fg}">${initials(p.name)}</div>`;
+
+  const roleName = getRoleName(p.role);
+  card.innerHTML = `
+    ${avatarHtml}
+    <div class="card-info">
+      <div class="card-name">${p.name}</div>
+      <div class="card-role">${roleName}</div>
+      <div class="card-date">${fmtDate(p.date)}</div>
+    </div>
+    <span class="card-del" onclick="deletePerson('${p.id}',event)" title="Remover">✕</span>`;
+
+  return card;
+}
+
+function getRoleName(rid) {
+  const r = state.roles.find(r => r.id === rid);
+  return r ? r.name : '—';
+}
+
+function onDragStart(e, id) {
+  state.drag = id;
+  setTimeout(() => {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+function onDragEnd() {
+  document.querySelectorAll('.card.dragging').forEach(c => c.classList.remove('dragging'));
+  document.querySelectorAll('.drag-over').forEach(z => z.classList.remove('drag-over'));
+}
+function onDragOver(e, cid, rid) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+}
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+function onDrop(e, cid, rid) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!state.drag) return;
+  const p = state.people.find(p => p.id === state.drag);
+  if (!p) return;
+  p.client = cid || null;
+  if (rid) p.role = rid;
+  state.drag = null;
+  save(); render();
+}
+
+function deletePerson(id, e) {
+  e.stopPropagation();
+  if (!confirm('Remover este funcionário do organograma?')) return;
+  state.people = state.people.filter(p => p.id !== id);
+  save(); render();
+  showToast('Funcionário removido');
+}
+
+/* ── MODALS ── */
+function openAddPerson() {
+  modalMode = 'person';
+  document.getElementById('modal-title').textContent = 'Adicionar funcionário';
+  document.getElementById('modal-confirm').textContent = 'Adicionar';
+  const rOpts = state.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+  const cOpts = state.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  document.getElementById('modal-body').innerHTML = `
+    <div class="form-group">
+      <label class="form-label">Nome *</label>
+      <input class="form-input" id="f-name" placeholder="Nome completo" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Cargo</label>
+      <select class="form-select" id="f-role"><option value="">Sem cargo</option>${rOpts}</select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Cliente (alocação inicial)</label>
+      <select class="form-select" id="f-client"><option value="">Sem cliente</option>${cOpts}</select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Data de contratação</label>
+      <input class="form-input" id="f-date" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Foto do funcionário</label>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <button class="btn" style="padding:5px 10px;font-size:11px" onclick="document.getElementById('f-photo-file').click()">📁 Subir do computador</button>
+        <input type="file" id="f-photo-file" accept="image/*" style="display:none" onchange="handlePersonPhotoFile(event)">
+        <span style="font-size:11px;color:var(--text3)">ou URL:</span>
+      </div>
+      <input class="form-input" id="f-photo" placeholder="https://...">
+      <img id="f-preview" class="photo-preview">
+      <div style="margin-top:6px;padding:8px;background:var(--surface2);border-radius:var(--radius);font-size:11px;color:var(--text2)">
+        💡 <strong>Google Drive:</strong> Abra a foto → "Compartilhar" → "Qualquer pessoa com o link" → copie o ID da URL e use:<br>
+        <code style="font-size:10px;word-break:break-all">https://drive.google.com/thumbnail?id=ID_AQUI&sz=w200</code>
+      </div>
+    </div>`;
+  document.getElementById('f-photo').oninput = function() {
+    const img = document.getElementById('f-preview');
+    img.src = this.value;
+    img.style.display = this.value ? 'block' : 'none';
+  };
+  showModal();
+}
+
+function handlePersonPhotoFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('f-photo').value = ev.target.result;
+    const img = document.getElementById('f-preview');
+    img.src = ev.target.result;
+    img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function openAddClient() {
+  modalMode = 'client';
+  document.getElementById('modal-title').textContent = 'Adicionar cliente';
+  document.getElementById('modal-confirm').textContent = 'Adicionar';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="form-group">
+      <label class="form-label">Nome do cliente *</label>
+      <input class="form-input" id="f-name" placeholder="Ex: Empresa XYZ" autocomplete="off">
+    </div>`;
+  showModal();
+}
+
+function openAddRole() {
+  modalMode = 'role';
+  document.getElementById('modal-title').textContent = 'Adicionar cargo';
+  document.getElementById('modal-confirm').textContent = 'Adicionar';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="form-group">
+      <label class="form-label">Nome do cargo *</label>
+      <input class="form-input" id="f-name" placeholder="Ex: Desenvolvedor, Designer, PM..." autocomplete="off">
+    </div>`;
+  showModal();
+}
+
+function editClient(id) {
+  modalMode = 'edit-client';
+  const cl = state.clients.find(c => c.id === id);
+  document.getElementById('modal-title').textContent = 'Editar cliente';
+  document.getElementById('modal-confirm').textContent = 'Salvar';
+  document.getElementById('modal-body').innerHTML = `
+    <input type="hidden" id="f-id" value="${id}">
+    <div class="form-group">
+      <label class="form-label">Nome do cliente</label>
+      <input class="form-input" id="f-name" value="${cl.name}" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Logo do cliente</label>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <button class="btn" style="padding:5px 10px;font-size:11px" onclick="document.getElementById('f-logo-file').click()">📁 Subir arquivo</button>
+        <input type="file" id="f-logo-file" accept="image/*" style="display:none" onchange="handleLogoFile(event)">
+        <span style="font-size:11px;color:var(--text3)">ou cole uma URL:</span>
+      </div>
+      <input class="form-input" id="f-logo" placeholder="https://... (URL da imagem)" value="${cl.logo||''}" oninput="previewLogo(this.value)">
+      <div id="f-logo-preview-wrap" style="margin-top:8px;display:${cl.logo?'flex':'none'};align-items:center;gap:8px">
+        <img id="f-logo-preview" src="${cl.logo||''}" style="width:36px;height:36px;border-radius:6px;object-fit:contain;border:1px solid var(--border);background:var(--bg)">
+        <button class="btn danger" style="padding:3px 8px;font-size:11px" onclick="clearLogo()">Remover logo</button>
+      </div>
+      <div style="margin-top:6px;padding:8px;background:var(--surface2);border-radius:var(--radius);font-size:11px;color:var(--text2)">
+        💡 <strong>Google Drive:</strong> Abra a imagem no Drive → clique com botão direito → "Compartilhar" → "Qualquer pessoa com o link" → copie o ID do link e use:<br>
+        <code style="font-size:10px;word-break:break-all">https://drive.google.com/thumbnail?id=ID_AQUI&sz=w200</code>
+      </div>
+    </div>
+    <div class="modal-extra">
+      <button class="btn danger" style="width:100%" onclick="deleteClient('${id}')">Remover cliente e desalocar funcionários</button>
+    </div>`;
+  showModal();
+}
+
+function previewLogo(url) {
+  const wrap = document.getElementById('f-logo-preview-wrap');
+  const img = document.getElementById('f-logo-preview');
+  if (url) { img.src = url; wrap.style.display = 'flex'; }
+  else { wrap.style.display = 'none'; }
+}
+function clearLogo() {
+  document.getElementById('f-logo').value = '';
+  document.getElementById('f-logo-preview-wrap').style.display = 'none';
+}
+function handleLogoFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('f-logo').value = ev.target.result;
+    previewLogo(ev.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+function deleteClient(id) {
+  if (!confirm('Remover cliente? Os funcionários ficarão sem alocação.')) return;
+  state.people.forEach(p => { if (p.client === id) p.client = null; });
+  state.clients = state.clients.filter(c => c.id !== id);
+  closeModalDirect(); save(); render();
+  showToast('Cliente removido');
+}
+
+function openManageRoles() {
+  modalMode = 'manage-roles';
+  document.getElementById('modal-title').textContent = 'Gerenciar cargos';
+  document.getElementById('modal-confirm').textContent = 'Fechar';
+  renderManageRoles();
+  document.getElementById('modal-confirm').style.display = 'none';
+  showModal();
+}
+
+function renderManageRoles() {
+  const rows = state.roles.map((r, i) => `
+    <div class="role-manage-row" draggable="true" data-role-id="${r.id}" data-role-idx="${i}"
+      ondragstart="onRoleDragStart(event,${i})"
+      ondragover="onRoleDragOver(event,${i})"
+      ondragleave="onRoleDragLeave(event)"
+      ondrop="onRoleDrop(event,${i})"
+      ondragend="onRoleDragEnd()"
+      style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);border-radius:4px;transition:background 0.1s">
+      <span style="color:var(--text3);font-size:13px;cursor:grab;padding:0 2px;user-select:none" title="Arrastar para reordenar">⠿</span>
+      <span style="flex:1;font-size:13px">${r.name}</span>
+      <button class="btn" style="padding:4px 10px;font-size:11px" onclick="renameRole('${r.id}')">Renomear</button>
+      <button class="btn danger" style="padding:4px 10px;font-size:11px" onclick="deleteRole('${r.id}')">Remover</button>
+    </div>`).join('') || '<p style="color:var(--text3);font-size:13px">Nenhum cargo cadastrado.</p>';
+  document.getElementById('modal-body').innerHTML = `
+    <p style="font-size:11px;color:var(--text3);margin-bottom:10px">Arraste para reordenar como os cargos aparecem no organograma.</p>
+    <div id="roles-list">${rows}</div>`;
+}
+
+let roleDragIdx = null;
+function onRoleDragStart(e, idx) {
+  roleDragIdx = idx;
+  setTimeout(() => {
+    const el = document.querySelector(`[data-role-idx="${idx}"]`);
+    if (el) el.style.opacity = '0.35';
+  }, 0);
+}
+function onRoleDragOver(e, idx) {
+  e.preventDefault();
+  if (roleDragIdx === null || roleDragIdx === idx) return;
+  document.querySelectorAll('.role-manage-row').forEach(r => r.style.outline = '');
+  const el = document.querySelector(`[data-role-idx="${idx}"]`);
+  if (el) el.style.outline = '2px dashed var(--blue)';
+}
+function onRoleDragLeave(e) {
+  e.currentTarget.style.outline = '';
+}
+function onRoleDrop(e, idx) {
+  e.preventDefault();
+  if (roleDragIdx === null || roleDragIdx === idx) return;
+  const moved = state.roles.splice(roleDragIdx, 1)[0];
+  state.roles.splice(idx, 0, moved);
+  roleDragIdx = null;
+  save(); render(); renderManageRoles();
+  showToast('Ordem dos cargos atualizada');
+}
+function onRoleDragEnd() {
+  document.querySelectorAll('.role-manage-row').forEach(r => {
+    r.style.opacity = '';
+    r.style.outline = '';
+  });
+  roleDragIdx = null;
+}
+
+function renameRole(id) {
+  const r = state.roles.find(r => r.id === id);
+  const name = prompt('Novo nome para o cargo:', r.name);
+  if (name && name.trim()) { r.name = name.trim(); save(); render(); renderManageRoles(); }
+}
+function deleteRole(id) {
+  if (!confirm('Remover cargo? Funcionários com esse cargo ficarão sem cargo.')) return;
+  state.people.forEach(p => { if (p.role === id) p.role = null; });
+  state.roles = state.roles.filter(r => r.id !== id);
+  save(); render(); renderManageRoles();
+}
+
+function showModal() {
+  document.getElementById('modal-confirm').style.display = '';
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => { const el = document.getElementById('f-name'); if (el) el.focus(); }, 80);
+}
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  modalMode = null;
+}
+
+function confirmModal() {
+  if (modalMode === 'manage-roles') { closeModalDirect(); return; }
+  const nameEl = document.getElementById('f-name');
+  const name = nameEl ? nameEl.value.trim() : '';
+
+  if (modalMode === 'person') {
+    if (!name) { nameEl.focus(); return; }
+    state.people.push({
+      id: uid(), name,
+      role: document.getElementById('f-role').value || null,
+      client: document.getElementById('f-client').value || null,
+      date: document.getElementById('f-date').value || '',
+      photo: document.getElementById('f-photo').value.trim() || ''
+    });
+    showToast('Funcionário adicionado');
+  } else if (modalMode === 'client') {
+    if (!name) { nameEl.focus(); return; }
+    state.clients.push({ id: uid(), name });
+    showToast('Cliente adicionado');
+  } else if (modalMode === 'role') {
+    if (!name) { nameEl.focus(); return; }
+    state.roles.push({ id: uid(), name });
+    showToast('Cargo adicionado');
+  } else if (modalMode === 'edit-client') {
+    const id = document.getElementById('f-id').value;
+    const cl = state.clients.find(c => c.id === id);
+    if (cl && name) {
+      cl.name = name;
+      cl.logo = (document.getElementById('f-logo') ? document.getElementById('f-logo').value.trim() : cl.logo) || '';
+      showToast('Cliente atualizado');
+    }
+  }
+  closeModalDirect(); save(); render();
+}
+
+/* ── EXPORT / IMPORT ── */
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'organograma_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('Dados exportados!');
+}
+
+function importJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.clients && data.roles && data.people) {
+        state = data;
+        save(); render();
+        showToast('Dados importados com sucesso!');
+      } else {
+        alert('Arquivo inválido.');
+      }
+    } catch { alert('Erro ao ler o arquivo.'); }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function exportPNG() {
+  showToast('Gerando imagem...');
+  const board = document.getElementById('board');
+  html2canvas(board, {
+    backgroundColor: '#F7F6F3',
+    scale: 2,
+    useCORS: true,
+    logging: false
+  }).then(canvas => {
+    const a = document.createElement('a');
+    a.download = 'organograma_' + new Date().toISOString().slice(0,10) + '.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    showToast('Imagem salva!');
+  });
+}
+
+function clearAll() {
+  if (!confirm('Limpar todo o organograma? Esta ação não pode ser desfeita.')) return;
+  state = { clients:[], roles:[], people:[], drag:null };
+  save(); render();
+  showToast('Organograma limpo');
+}
+
+/* ── KEYBOARD ── */
+document.addEventListener('keydown', e => {
+  if (document.getElementById('modal-overlay').classList.contains('open')) {
+    if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') confirmModal();
+    if (e.key === 'Escape') closeModalDirect();
+  }
+});
+
+/* ── INIT ── */
+load();
+
+if (!state.clients.length) {
+  state.clients = [
+    { id: 'c1', name: 'Cliente A' },
+    { id: 'c2', name: 'Cliente B' },
+    { id: 'c3', name: 'Cliente C' },
+  ];
+  state.roles = [
+    { id: 'r1', name: 'Gerente de Projeto' },
+    { id: 'r2', name: 'Desenvolvedor' },
+    { id: 'r3', name: 'Designer' },
+  ];
+  state.people = [
+    { id: 'p1', name: 'Ana Souza', role: 'r1', date: '2023-03-15', photo: '', client: 'c1' },
+    { id: 'p2', name: 'Bruno Lima', role: 'r2', date: '2022-07-01', photo: '', client: 'c1' },
+    { id: 'p3', name: 'Carla Mota', role: 'r2', date: '2024-01-10', photo: '', client: 'c2' },
+    { id: 'p4', name: 'Diego Ferreira', role: 'r3', date: '2023-11-20', photo: '', client: null },
+    { id: 'p5', name: 'Elena Ramos', role: 'r1', date: '2021-05-03', photo: '', client: 'c3' },
+  ];
+}
+render();
+</script>
+</body>
+</html>
