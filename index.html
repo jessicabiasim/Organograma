@@ -591,11 +591,15 @@
   <button class="btn" onclick="openAddRole()">
     <span class="btn-icon">+</span> Cargo
   </button>
+  <button class="btn" onclick="openAddArea()">
+    <span class="btn-icon">+</span> Área
+  </button>
   <button class="btn" onclick="openAddLeader()">
     <span class="btn-icon">+</span> Líder
   </button>
   <div class="sep"></div>
   <button class="btn" onclick="openManageRoles()">⚙ Gerenciar cargos</button>
+  <button class="btn" onclick="openManageAreas()">⚙ Gerenciar áreas</button>
   <div class="sep"></div>
   <button class="btn danger" onclick="clearAll()">✕ Limpar tudo</button>
 </div>
@@ -644,7 +648,7 @@ const AVATAR_COLORS = [
   ['#F9EEF3','#A03060'],['#EDFAF5','#00806A'],
 ];
 
-let state = { clients:[], roles:[], people:[], leaders:[], drag:null, companyLogo:COMPANY_LOGO_DEFAULT };
+let state = { clients:[], roles:[], areas:[], people:[], leaders:[], drag:null, companyLogo:COMPANY_LOGO_DEFAULT };
 let modalMode = null;
 
 function uid() { return Math.random().toString(36).slice(2,9); }
@@ -811,23 +815,23 @@ function makeClientCol(cl) {
 
   const body = col.querySelector('.col-body');
 
-  state.roles.forEach(role => {
+  state.areas.forEach(area => {
     const rr = document.createElement('div');
     rr.className = 'role-row';
 
     const lbl = document.createElement('div');
     lbl.className = 'role-label';
-    lbl.textContent = role.name;
+    lbl.textContent = area.name;
 
     const dz = document.createElement('div');
     dz.className = 'drop-zone';
     dz.dataset.client = cl.id;
-    dz.dataset.role = role.id;
-    dz.ondragover = e => onDragOver(e, cl.id, role.id);
+    dz.dataset.area = area.id;
+    dz.ondragover = e => onDragOver(e, cl.id, area.id);
     dz.ondragleave = e => onDragLeave(e);
-    dz.ondrop = e => onDrop(e, cl.id, role.id);
+    dz.ondrop = e => onDropArea(e, cl.id, area.id);
 
-    const here = state.people.filter(p => p.client === cl.id && p.role === role.id);
+    const here = state.people.filter(p => p.client === cl.id && p.area === area.id);
     here.forEach(p => dz.appendChild(makeCard(p)));
     if (here.length) dz.classList.add('has-cards');
 
@@ -906,13 +910,25 @@ function onDragLeave(e) {
   e.currentTarget.classList.remove('drag-over');
 }
 function onDrop(e, cid, rid) {
+  // Legacy: used by unassigned pool (no area)
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
   if (!state.drag) return;
   const p = state.people.find(p => p.id === state.drag);
   if (!p) return;
   p.client = cid || null;
-  if (rid) p.role = rid;
+  state.drag = null;
+  save(); render();
+}
+
+function onDropArea(e, cid, areaId) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!state.drag) return;
+  const p = state.people.find(p => p.id === state.drag);
+  if (!p) return;
+  p.client = cid || null;
+  p.area = areaId || null;
   state.drag = null;
   save(); render();
 }
@@ -929,6 +945,7 @@ function deletePerson(id, e) {
 function personFormHTML(p) {
   const rOpts = state.roles.map(r => `<option value="${r.id}"${p&&p.role===r.id?' selected':''}>${r.name}</option>`).join('');
   const cOpts = state.clients.map(c => `<option value="${c.id}"${p&&p.client===c.id?' selected':''}>${c.name}</option>`).join('');
+  const aOpts = state.areas.map(a => `<option value="${a.id}"${p&&p.area===a.id?' selected':''}>${a.name}</option>`).join('');
   const photoVal = p ? (p.photo||'') : '';
   const nameVal = p ? p.name : '';
   const dateVal = p ? (p.date||'') : '';
@@ -945,6 +962,10 @@ function personFormHTML(p) {
     <div class="form-group">
       <label class="form-label">Cliente (alocação)</label>
       <select class="form-select" id="f-client"><option value="">Sem cliente</option>${cOpts}</select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Área no cliente</label>
+      <select class="form-select" id="f-area"><option value="">Sem área</option>${aOpts}</select>
     </div>
     <div class="form-group">
       <label class="form-label">Data de contratação</label>
@@ -1035,9 +1056,64 @@ function openAddRole() {
   document.getElementById('modal-body').innerHTML = `
     <div class="form-group">
       <label class="form-label">Nome do cargo *</label>
-      <input class="form-input" id="f-name" placeholder="Ex: Desenvolvedor, Designer, PM..." autocomplete="off">
+      <input class="form-input" id="f-name" placeholder="Ex: Redator Sr, DA Pl..." autocomplete="off">
     </div>`;
   showModal();
+}
+
+function openAddArea() {
+  modalMode = 'area';
+  document.getElementById('modal-title').textContent = 'Adicionar área';
+  document.getElementById('modal-confirm').textContent = 'Adicionar';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="form-group">
+      <label class="form-label">Nome da área *</label>
+      <input class="form-input" id="f-name" placeholder="Ex: Redação, Atendimento, Mídia..." autocomplete="off">
+    </div>`;
+  showModal();
+}
+
+function openManageAreas() {
+  modalMode = 'manage-areas';
+  document.getElementById('modal-title').textContent = 'Gerenciar áreas';
+  document.getElementById('modal-confirm').textContent = 'Fechar';
+  renderManageAreas();
+  document.getElementById('modal-confirm').style.display = 'none';
+  showModal();
+}
+
+let areaDragIdx = null;
+function renderManageAreas() {
+  const rows = state.areas.map((a, i) => `
+    <div class="role-manage-row" draggable="true" data-area-idx="${i}"
+      ondragstart="areaDragIdx=${i};setTimeout(()=>{const el=document.querySelector('[data-area-idx=\'${i}\']');if(el)el.style.opacity='0.35'},0)"
+      ondragover="event.preventDefault();document.querySelectorAll('.role-manage-row').forEach(r=>r.style.outline='');const el=document.querySelector('[data-area-idx=\'${i}\']');if(el)el.style.outline='2px dashed var(--blue)'"
+      ondragleave="event.currentTarget.style.outline=''"
+      ondrop="event.preventDefault();if(areaDragIdx!==null&&areaDragIdx!==${i}){const m=state.areas.splice(areaDragIdx,1)[0];state.areas.splice(${i},0,m);areaDragIdx=null;save();render();renderManageAreas();showToast('Ordem atualizada')}"
+      ondragend="document.querySelectorAll('.role-manage-row').forEach(r=>{r.style.opacity='';r.style.outline=''});areaDragIdx=null"
+      style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);border-radius:4px">
+      <span style="color:var(--text3);font-size:13px;cursor:grab;padding:0 2px;user-select:none">⠿</span>
+      <span style="flex:1;font-size:13px">${a.name}</span>
+      <button class="btn" style="padding:4px 10px;font-size:11px" onclick="renameArea('${a.id}')">Renomear</button>
+      <button class="btn danger" style="padding:4px 10px;font-size:11px" onclick="deleteArea('${a.id}')">Remover</button>
+    </div>`).join('') || '<p style="color:var(--text3);font-size:13px">Nenhuma área cadastrada.</p>';
+  document.getElementById('modal-body').innerHTML = `
+    <p style="font-size:11px;color:var(--text3);margin-bottom:10px">Arraste para reordenar como as áreas aparecem nas colunas dos clientes.</p>
+    <div>${rows}</div>`;
+}
+
+function renameArea(id) {
+  const a = state.areas.find(a => a.id === id);
+  const name = prompt('Novo nome para a área:', a.name);
+  if (name && name.trim()) { a.name = name.trim(); save(); render(); renderManageAreas(); }
+}
+
+function deleteArea(id) {
+  if (!confirm('Remover área? Funcionários nessa área ficarão sem área.')) return;
+  state.people.forEach(p => { if (p.area === id) p.area = null; });
+  state.areas = state.areas.filter(a => a.id !== id);
+  save(); render(); renderManageAreas();
+  showToast('Área removida');
 }
 
 /* ── LEADER MODALS ── */
@@ -1279,7 +1355,7 @@ function closeModalDirect() {
 }
 
 function confirmModal() {
-  if (modalMode === 'manage-roles') { closeModalDirect(); return; }
+  if (modalMode === 'manage-roles' || modalMode === 'manage-areas') { closeModalDirect(); return; }
   const nameEl = document.getElementById('f-name');
   const name = nameEl ? nameEl.value.trim() : '';
 
@@ -1296,6 +1372,7 @@ function confirmModal() {
       id: uid(), name,
       role: document.getElementById('f-role').value || null,
       client: document.getElementById('f-client').value || null,
+      area: document.getElementById('f-area') ? document.getElementById('f-area').value || null : null,
       date: document.getElementById('f-date').value || '',
       photo: document.getElementById('f-photo').value.trim() || ''
     });
@@ -1307,6 +1384,7 @@ function confirmModal() {
       p.name = name;
       p.role = document.getElementById('f-role').value || null;
       p.client = document.getElementById('f-client').value || null;
+      p.area = document.getElementById('f-area') ? document.getElementById('f-area').value || null : null;
       p.date = document.getElementById('f-date').value || '';
       p.photo = document.getElementById('f-photo').value.trim() || '';
       showToast('Funcionário atualizado');
@@ -1320,6 +1398,12 @@ function confirmModal() {
     if (!name) { nameEl.focus(); return; }
     state.roles.push({ id: uid(), name });
     showToast('Cargo adicionado');
+  } else if (modalMode === 'area') {
+    if (!name) { nameEl.focus(); return; }
+    state.areas.push({ id: uid(), name });
+    showToast('Área adicionada');
+  } else if (modalMode === 'manage-areas') {
+    closeModalDirect(); return;
   } else if (modalMode === 'edit-client') {
     const id = document.getElementById('f-id').value;
     const cl = state.clients.find(c => c.id === id);
@@ -1407,7 +1491,7 @@ function exportPNG() {
 
 function clearAll() {
   if (!confirm('Limpar todo o organograma? Esta ação não pode ser desfeita.')) return;
-  state = { clients:[], roles:[], people:[], leaders:[], drag:null, companyLogo:COMPANY_LOGO_DEFAULT };
+  state = { clients:[], roles:[], areas:[], people:[], leaders:[], drag:null, companyLogo:COMPANY_LOGO_DEFAULT };
   save(); render();
   showToast('Organograma limpo');
 }
@@ -1426,6 +1510,7 @@ document.addEventListener('keydown', e => {
   // Always start from seed data embedded in HTML
   state.clients = imported.clients;
   state.roles = imported.roles;
+  state.areas = [{"id": "a01", "name": "Atendimento"}, {"id": "a02", "name": "Diretor de Arte Senior"}, {"id": "a03", "name": "Diretor de Arte Pleno"}, {"id": "a04", "name": "Diretor de Arte Junior"}, {"id": "a05", "name": "Redator"}, {"id": "a06", "name": "Redator Conteúdo"}, {"id": "a07", "name": "Arte Final"}, {"id": "a08", "name": "Mídia"}, {"id": "a09", "name": "Social Listening"}, {"id": "a10", "name": "BI"}, {"id": "a11", "name": "Motion"}, {"id": "a12", "name": "Produção"}];
   state.people = imported.people;
   state.leaders = imported.leaders;
   state.companyLogo = COMPANY_LOGO_DEFAULT;
@@ -1436,7 +1521,8 @@ document.addEventListener('keydown', e => {
     if (s) {
       const saved = JSON.parse(s);
       if (saved && saved._version === 'v4') {
-        state = Object.assign({ leaders:[], companyLogo:COMPANY_LOGO_DEFAULT }, saved);
+        state = Object.assign({ leaders:[], areas:[], companyLogo:COMPANY_LOGO_DEFAULT }, saved);
+        if (!state.areas || !state.areas.length) state.areas = [{"id": "a01", "name": "Atendimento"}, {"id": "a02", "name": "Diretor de Arte Senior"}, {"id": "a03", "name": "Diretor de Arte Pleno"}, {"id": "a04", "name": "Diretor de Arte Junior"}, {"id": "a05", "name": "Redator"}, {"id": "a06", "name": "Redator Conteúdo"}, {"id": "a07", "name": "Arte Final"}, {"id": "a08", "name": "Mídia"}, {"id": "a09", "name": "Social Listening"}, {"id": "a10", "name": "BI"}, {"id": "a11", "name": "Motion"}, {"id": "a12", "name": "Produção"}];
       }
     }
   } catch(e) {}
