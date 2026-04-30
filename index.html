@@ -880,6 +880,7 @@ function makeCard(p) {
     </div>
     <div class="card-actions">
       <button class="card-action-btn" onclick="editPerson('${p.id}',event)" title="Editar">✎</button>
+      <button class="card-action-btn" onclick="duplicatePerson('${p.id}',event)" title="Duplicar para outro cliente" style="font-size:11px">⧉</button>
       <button class="card-action-btn del" onclick="deletePerson('${p.id}',event)" title="Remover">✕</button>
     </div>`;
 
@@ -939,6 +940,16 @@ function deletePerson(id, e) {
   state.people = state.people.filter(p => p.id !== id);
   save(); render();
   showToast('Funcionário removido');
+}
+
+function duplicatePerson(id, e) {
+  e.stopPropagation();
+  const p = state.people.find(p => p.id === id);
+  if (!p) return;
+  const copy = { ...p, id: uid(), client: null, area: null };
+  state.people.push(copy);
+  save(); render();
+  showToast('Cópia criada — arraste para o cliente desejado');
 }
 
 /* ── MODALS ── */
