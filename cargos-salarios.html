@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cargos & Salários</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F6F3; --surface: #FFFFFF; --surface2: #F0EEE9;
+    --border: #E2DED6; --border2: #CCC9C0;
+    --text: #1A1916; --text2: #6B6860; --text3: #9B9890;
+    --accent: #1A1916; --accent-fg: #F7F6F3;
+    --blue: #2B5BE0; --blue-light: #EBF0FF;
+    --red: #C0392B; --red-light: #FDECEA;
+    --green: #1A7A4A; --green-light: #E8F6EE;
+    --yellow: #B45309; --yellow-light: #FEF3C7;
+    --radius: 8px; --radius-lg: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+  /* LOCK */
+  #lock-screen { position: fixed; inset: 0; background: var(--accent); display: flex; align-items: center; justify-content: center; z-index: 1000; transition: opacity 0.4s, visibility 0.4s; }
+  #lock-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  .lock-box { background: var(--surface); border-radius: var(--radius-lg); padding: 40px; width: 360px; box-shadow: var(--shadow-lg); text-align: center; }
+  .lock-icon { width: 48px; height: 48px; background: var(--surface2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 20px; }
+  .lock-box h2 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+  .lock-box p { color: var(--text2); font-size: 13px; margin-bottom: 24px; }
+  .lock-input { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border2); border-radius: var(--radius); font-family: 'DM Mono', monospace; font-size: 14px; letter-spacing: 2px; outline: none; transition: border-color 0.15s; margin-bottom: 12px; }
+  .lock-input:focus { border-color: var(--blue); }
+  .lock-input.error { border-color: var(--red); animation: shake 0.3s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+  .lock-error { color: var(--red); font-size: 12px; margin-bottom: 10px; display: none; }
+  .lock-error.show { display: block; }
+
+  /* BUTTONS */
+  .btn-primary { width: 100%; background: var(--accent); color: var(--accent-fg); border: none; border-radius: var(--radius); padding: 11px 20px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-header { background: rgba(255,255,255,0.1); color: var(--accent-fg); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius); padding: 7px 14px; font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.15s; }
+  .btn-header:hover { background: rgba(255,255,255,0.18); }
+  .btn-edit { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 12px; font-size: 12px; font-family: 'DM Sans', sans-serif; cursor: pointer; color: var(--text); transition: background 0.1s; }
+  .btn-edit:hover { background: var(--border); }
+  .btn-secondary { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 9px 18px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .btn-save { background: var(--accent); color: var(--accent-fg); border: none; border-radius: var(--radius); padding: 9px 20px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; }
+
+  /* HEADER */
+  .app-header { background: var(--accent); color: var(--accent-fg); padding: 0 28px; display: flex; align-items: center; justify-content: space-between; height: 72px; position: sticky; top: 0; z-index: 50; }
+  .app-header h1 { font-size: 15px; font-weight: 500; }
+  .app-header .subtitle { font-size: 12px; opacity: 0.5; font-family: 'DM Mono', monospace; margin-left: 12px; }
+  .header-left { display: flex; align-items: center; }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+  #fb-status { font-size: 11px; font-family: 'DM Mono', monospace; padding: 4px 10px; border-radius: 20px; background: #333; color: white; opacity: 0; transition: opacity 0.3s; }
+
+  /* TABS */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); padding: 0 28px; }
+  .tab-btn { padding: 12px 20px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; border: none; background: none; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  /* TOOLBAR */
+  .toolbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 28px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .search-wrap { position: relative; flex: 1; max-width: 280px; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text3); }
+  .search-input { width: 100%; padding: 8px 12px 8px 34px; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 13px; background: var(--bg); outline: none; }
+  .search-input:focus { border-color: var(--blue); background: white; }
+  .filter-select { padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 13px; background: var(--bg); outline: none; cursor: pointer; }
+  .toolbar-sep { flex: 1; }
+  .summary-chips { display: flex; gap: 8px; }
+  .chip { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; background: var(--surface2); color: var(--text2); }
+  .chip.green { background: var(--green-light); color: var(--green); }
+  .chip.blue { background: var(--blue-light); color: var(--blue); }
+
+  /* MAIN */
+  .main { padding: 24px 28px; }
+
+  /* TABLE */
+  .table-wrap { background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 12px 16px; font-size: 13px; vertical-align: middle; }
+  .td-name { font-weight: 500; }
+  .td-mono { font-family: 'DM Mono', monospace; font-size: 13px; }
+  .td-empty { color: var(--text3); font-style: italic; font-size: 12px; }
+
+  /* LEVEL BADGES */
+  .level-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .lv-assistente { background: #F0EEE9; color: #6B6860; }
+  .lv-junior { background: #EBF0FF; color: #2B5BE0; }
+  .lv-pleno { background: #E8F6EE; color: #1A7A4A; }
+  .lv-senior { background: #FEF3C7; color: #B45309; }
+  .lv-lider { background: #F3E8FF; color: #7C3AED; }
+  .lv-diretor { background: #1A1916; color: #F7F6F3; }
+
+  /* STATUS BADGES */
+  .badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 500; margin-left: 5px; }
+  .b-ok { background: var(--green-light); color: var(--green); }
+  .b-low { background: var(--red-light); color: var(--red); }
+  .b-high { background: var(--blue-light); color: var(--blue); }
+  .b-gray { background: var(--surface2); color: var(--text3); }
+
+  /* FAIXA COLORS */
+  .faixa-ok { color: var(--green); font-family: 'DM Mono', monospace; font-size: 12px; }
+  .faixa-low { color: var(--red); font-family: 'DM Mono', monospace; font-size: 12px; }
+  .faixa-high { color: var(--blue); font-family: 'DM Mono', monospace; font-size: 12px; }
+  .faixa-neutral { color: var(--text3); font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  /* MODAL */
+  #modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; }
+  #modal-overlay.open { opacity: 1; visibility: visible; }
+  .modal { background: var(--surface); border-radius: var(--radius-lg); padding: 28px; width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); transform: translateY(8px); transition: transform 0.2s; }
+  #modal-overlay.open .modal { transform: translateY(0); }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .modal-header h3 { font-size: 16px; font-weight: 600; }
+  .modal-close { background: none; border: none; cursor: pointer; color: var(--text2); font-size: 18px; line-height: 1; padding: 4px; }
+  .form-row { margin-bottom: 16px; }
+  .form-row label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .form-input, .form-select { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border2); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; background: white; transition: border-color 0.15s; }
+  .form-input:focus, .form-select:focus { border-color: var(--blue); }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .person-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface2); border-radius: var(--radius); margin-bottom: 20px; }
+  .person-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--border2); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; color: var(--text2); flex-shrink: 0; }
+  .person-name { font-weight: 600; font-size: 14px; }
+  .person-role { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  /* FAIXA PREVIEW */
+  .faixa-preview { padding: 10px 14px; background: var(--surface2); border-radius: var(--radius); font-size: 12px; color: var(--text2); display: none; margin-bottom: 16px; }
+  .faixa-preview.show { display: block; }
+
+  /* HISTORY */
+  .history-list { display: flex; flex-direction: column; }
+  .history-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .history-item:last-child { border-bottom: none; }
+  .h-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .h-raise { background: var(--green); }
+  .h-cut { background: var(--red); }
+  .h-new { background: var(--blue); }
+  .h-info { flex: 1; }
+  .h-name { font-weight: 500; font-size: 13px; }
+  .h-detail { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .h-val { font-family: 'DM Mono', monospace; font-size: 13px; text-align: right; }
+  .h-old { color: var(--text3); text-decoration: line-through; font-size: 11px; }
+  .h-new { color: var(--green); }
+  .h-date { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: 12px; }
+
+  /* SKILLS */
+  .area-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .area-pill { padding: 7px 16px; border-radius: 20px; border: 1.5px solid var(--border2); background: var(--surface); font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text2); font-weight: 500; transition: all 0.15s; }
+  .area-pill:hover { border-color: var(--accent); color: var(--text); }
+  .area-pill.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .skills-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
+  .skills-col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .skills-col-head { padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .skills-col-level { font-weight: 700; font-size: 13px; }
+  .skills-col-range { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--green); margin-top: 3px; }
+  .skills-col-body { padding: 12px 16px; }
+  .skill-item { padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .skill-item:last-child { border-bottom: none; }
+  .skill-desejado { margin-top: 10px; padding: 8px 10px; background: var(--blue-light); border-radius: var(--radius); font-size: 11px; color: var(--blue); }
+  .skill-desejado strong { display: block; margin-bottom: 3px; font-weight: 600; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--accent); color: var(--accent-fg); padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.3s, transform 0.3s; z-index: 999; pointer-events: none; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 640px) {
+    .main { padding: 16px; } .toolbar { padding: 10px 16px; } .tabs { padding: 0 16px; } .app-header { padding: 0 16px; }
+    .modal { width: calc(100vw - 32px); padding: 20px; } .summary-chips { display: none; }
+    .form-row-2 { grid-template-columns: 1fr; } .skills-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="lock-screen">
+  <div class="lock-box">
+    <div class="lock-icon">🔒</div>
+    <h2>Área Restrita</h2>
+    <p>Esta página contém informações confidenciais de cargos e salários.</p>
+    <input type="password" id="lock-input" class="lock-input" placeholder="Digite a senha" autocomplete="off">
+    <div id="lock-error" class="lock-error">Senha incorreta. Tente novamente.</div>
+    <button class="btn-primary" onclick="checkPassword()">Entrar</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <header class="app-header">
+    <div class="header-left">
+      <h1>Cargos &amp; Salários</h1>
+      <span class="subtitle">confidencial</span>
+    </div>
+    <div class="header-actions">
+      <span id="fb-status"></span>
+      <button class="btn-header" onclick="exportCSV()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Exportar CSV
+      </button>
+      <button class="btn-header" onclick="lockApp()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        Sair
+      </button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('pessoas',this)">Por Pessoa</button>
+    <button class="tab-btn" onclick="switchTab('historico',this)">Histórico de Reajustes</button>
+    <button class="tab-btn" onclick="switchTab('skills',this)">Skills por Área</button>
+  </div>
+
+  <div class="toolbar" id="toolbar-main">
+    <div class="search-wrap">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="search-input" class="search-input" placeholder="Buscar pessoa ou cargo..." oninput="renderCurrentTab()">
+    </div>
+    <select id="filter-cargo" class="filter-select" onchange="renderCurrentTab()">
+      <option value="">Todos os cargos</option>
+    </select>
+    <select id="filter-nivel" class="filter-select" onchange="renderCurrentTab()">
+      <option value="">Todos os níveis</option>
+      <option>Assistente</option><option>Júnior</option><option>Pleno</option>
+      <option>Sênior</option><option>Líder</option><option>Diretor</option>
+    </select>
+    <div class="toolbar-sep"></div>
+    <div class="summary-chips" id="summary-chips"></div>
+  </div>
+
+  <div class="main">
+    <div id="tab-pessoas"></div>
+    <div id="tab-historico" style="display:none"></div>
+    <div id="tab-skills" style="display:none"></div>
+  </div>
+</div>
+
+<div id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Editar Salário</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveModal()">Salvar</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ── SENHA ────────────────────────────────────────────────
+// ⚠️ Troque a senha abaixo antes de publicar!
+const APP_PASSWORD = 'rh2024';
+
+// ── SKILLS DATA ──────────────────────────────────────────
+const SKILLS_DB = {
+  "Produção": {
+    "Júnior":    { min:3100, max:4000, skills:["Noções básicas de Excel (lançar informações, atualizar planilhas)","Apoio em processos de produção de materiais impressos, eventos e audiovisual","Solicitação de orçamentos simples com acompanhamento do líder","Organização de arquivos, planilhas e documentação de produção","Suporte na elaboração de cronogramas e acompanhamento de prazos","Capacidade de lidar com tarefas operacionais e logística básica","Boa comunicação e relacionamento com a equipe interna","Entendimento da cultura da agência"], desejado:"Curiosidade para aprender a operar eventos e projetos especiais." },
+    "Pleno":     { min:4200, max:5000, skills:["Domínio intermediário de Excel (fórmulas, organização de dados, relatórios)","Experiência em planejamento e acompanhamento de produções","Capacidade de negociação e relacionamento com fornecedores","Elaboração e análise de orçamentos para otimização de custos","Desenvolvimento de cronogramas e garantia de prazos","Conhecimento técnico de acabamentos, formatos e impressão","Capacidade de acompanhar filmagens e produções audiovisuais","Gestão de contratações e entregas de influenciadores digitais"], desejado:"Experiência em eventos de médio porte. Noções de ferramentas de gestão de projetos. Inglês básico." },
+    "Sênior":    { min:5200, max:7500, skills:["Domínio avançado de Excel (análises, automações simples)","Planejamento e execução de produções complexas (eventos, campanhas, ativações)","Forte capacidade de negociação, contratação e gestão de fornecedores","Elaboração de cronogramas detalhados e acompanhamento de grandes entregas","Liderança técnica de projetos de alta complexidade","Participação ativa em processos criativos e apresentações para clientes","Capacidade de orientar e treinar juniores e plenos"], desejado:"Experiência em liderança técnica de equipe. Vivência em eventos de grande porte. Inglês intermediário." },
+    "Líder":     { min:8000, max:11000, skills:["Excel avançado + visão estratégica (análises financeiras, otimização de processos)","Planejamento e estruturação de projetos complexos","Gerenciamento de cronogramas, recursos, prazos e custos de forma estratégica","Coordenação de logística, montagem e infraestrutura de eventos","Domínio em gestão financeira da produção","Garantia de qualidade e excelência nas entregas","Capacidade de liderar e coordenar equipe de produção","Interface direta com clientes estratégicos"], desejado:"Experiência em grandes eventos nacionais/internacionais. Inglês avançado. Networking sólido com fornecedores." }
+  },
+  "Motion": {
+    "Júnior":    { min:3100, max:4000, skills:["Domínio intermediário de After Effects, Premiere, Photoshop e Illustrator","Execução de animações simples e edições estruturadas","Apoio na finalização de vídeos e organização de arquivos","Boa comunicação e colaboração em equipe","Noções básicas de gravação (composição de cena, enquadramento, foco)","Apoio em sets de gravação (montagem, captação de som, iluminação)","Entendimento da cultura da agência e interesse em repertório criativo"], desejado:"Interesse em aprender 3D, motion avançado ou ferramentas de IA." },
+    "Pleno":     { min:4200, max:5000, skills:["Domínio avançado de After Effects e Premiere","Capacidade de criar animações completas de média complexidade","Revisão e orientação técnica para juniores","Boa interlocução com áreas parceiras (DA, redação, atendimento)","Confiança para defender ideias criativas e soluções técnicas","Domínio intermediário de técnicas de gravação (câmera, microfones, iluminação)","Capacidade de executar filmagens de apoio, entrevistas e planos de corte"], desejado:"Domínio de pelo menos uma skill extra (3D, UI motion, ferramentas de IA, VFX)." },
+    "Sênior":    { min:5200, max:7500, skills:["Domínio total de After Effects, Premiere, Photoshop e Illustrator","Experiência com animações complexas e projetos estratégicos","Atuação como referência técnica dentro da equipe","Forte repertório criativo e atualização sobre tendências de motion","Responsável por revisar, delegar e evoluir entregas da equipe","Domínio avançado de técnicas de gravação (câmeras profissionais, direção de set)","Capacidade de dirigir pequenas gravações e coordenar produções híbridas"], desejado:"Domínio de Blender, Houdini ou ferramentas avançadas de IA." },
+    "Líder":     { min:8000, max:null, skills:["Domínio total das ferramentas Adobe (AE, Premiere, Illustrator, Photoshop, Audition)","Visão estratégica e estética para liderar a área de Motion","Liderança, coordenação, treinamento e desenvolvimento da equipe","Capacidade de atuar em projetos de alta complexidade","Participação ativa e direcionamento nos processos criativos","Gestão de contratações, desligamentos, onboarding e offboarding","Domínio de linguagem cinematográfica e referência em qualidade técnica"], desejado:"Domínio de ferramentas 3D avançadas. Experiência com IA generativa para vídeo. Participação em festivais de Motion." }
+  },
+  "Redação Social": {
+    "Júnior":    { min:2500, max:3200, skills:["Domínio básico das ferramentas Google Workspace","Bom domínio da língua portuguesa","Capacidade de seguir identidades visuais e desdobrar peças simples","Participação ativa em processos criativos","Imersão nos clientes e estudo das categorias","Entendimento da cultura da agência","Repertório criativo atualizado"], desejado:"Capacidade de reconhecer influenciadores com potencial de fit com a marca." },
+    "Pleno":     { min:3300, max:3800, skills:["Domínio das ferramentas Google Workspace","Crivo técnico básico de peça criativa (DA, motion, filme)","Criação de KV de campanhas de baixa complexidade","Capacidade de desdobrar campanhas para diferentes canais","Participação ativa em processos criativos","Confiança para apresentar peças para clientes","Domínio de captação de vídeo para redes sociais"], desejado:"Conhecimento da estratégia de uso de influenciadores." },
+    "Sênior":    { min:3900, max:5000, skills:["Domínio de estruturação de apresentação visual, linguagem e storytelling","Crivo técnico total de peça criativa","Criação de KVs para grandes campanhas e concorrências","Capacidade de liderança da jornada criativa","Capacidade de delegar, revisar e evoluir propostas criativas","Liderança de apresentações e pitches para clientes estratégicos","Edição básica de vídeo em CapCut ou ferramentas similares"], desejado:"Capacidade de definir estratégias de relacionamento com influenciadores." },
+    "Líder":     { min:5500, max:9000, skills:["Visão estratégica e estética para liderar a criação dos clientes","Visão estratégica para entregas pró-ativas no cliente","Liderança, coordenação, treinamento e desenvolvimento da equipe","Coordenação de equipes multidisciplinares (arte, motion, social)","Repertório criativo atualizado nos principais prêmios","Domínio de captação de vídeo com qualidade (planejamento, direção de cena)"], desejado:"" }
+  },
+  "Listening": {
+    "Júnior":    { min:2000, max:2700, skills:["Heavy user de Instagram, TikTok, LinkedIn, YouTube, Kwai e X","Domínio básico de Vtraker, Mlabs e Buzzmonitor","Boa organização e gestão de tarefas","Noções de KPIs de redes sociais","Compreensão da brand persona e aplicação nas interações","Desenvoltura para apresentações internas","Participação ativa em processos criativos"], desejado:"" },
+    "Pleno":     { min:2800, max:3400, skills:["Domínio de Vtraker, Mlabs e Buzzmonitor","Capacidade de gerenciar tempo e tarefas","Entendimento de KPIs de redes sociais e geração de insights para cronograma","Domínio da brand persona — análise e sugestões de melhorias","Confiança para apresentar para clientes e justificar dados","Boa interlocução com as demais áreas da agência"], desejado:"" },
+    "Sênior":    { min:3500, max:4200, skills:["Domínio avançado de Vtraker, Mlabs e Buzzmonitor","Alta capacidade de autogerenciamento de tempo e tarefas","Análise de KPIs de redes sociais e geração de insights estratégicos","Capacidade de desenvolvimento de brand personas","Presença e boa interlocução com os clientes","Liderança e direcionamento de assistentes, juniores e plenos"], desejado:"" }
+  },
+  "Atendimento": {
+    "Júnior":    { min:3500, max:5400, skills:["Domínio básico de iClips e Trello","Boa organização e gestão de tarefas","Entendimento e boa interpretação de demandas do cliente","Redação de briefings do dia a dia","Atenção em conferência de materiais","Autonomia e boa gestão de tempo","Comprometimento com a entrega"], desejado:"Noções/interesses em pelo menos uma área extra (produção, mídia digital, inbound, eventos)." },
+    "Pleno":     { min:5500, max:6500, skills:["Domínio de iClips e Trello","Capacidade de gerenciar pequenas campanhas","Confiança para apresentar para clientes e justificar escolhas criativas","Participação ativa em processos criativos","Domínio dos templates e processos internos da agência","Postura para tocar reuniões operacionais com o cliente"], desejado:"Conhecimento básico nas demais áreas da agência." },
+    "Sênior":    { min:7000, max:8500, skills:["Capacidade de gerenciar campanhas grandes integradas","Bom relacionamento com presença ativa com cliente","Desenvolvimento de briefing Mad Hit para processos criativos","Crivo técnico apurado das entregas","Autonomia em tomada de decisão","Entendimento estratégico do cliente","Liderança de apresentações para clientes estratégicos","Poder de antecipação de problemas"], desejado:"Entendimento de mídia digital/offline, produção gráfica, audiovisual e eventos." },
+    "Líder":     { min:9000, max:10000, skills:["Capacidade de gerenciar grupo de contas de clientes","Relacionamento consultivo com cliente (parceiro estratégico)","Liderança, coordenação, treinamento e desenvolvimento da equipe","Posicionamento firme e seguro perante o cliente","Visão estratégica para oportunidades pró-ativas no cliente","Desenvolvimento e implementação de cronogramas"], desejado:"Entendimento de mídia digital/offline, produção gráfica, audiovisual e eventos." },
+    "Diretor":   { min:10500, max:13000, skills:["Poder de tomada de decisão complexas","Gestão de crise nos clientes","Guardiã do ponto de retorno dos clientes","Responsável pelos templates e processos internos da agência","Liderança e coordenação de equipes","Crivo e decisão nas contratações e demissões","Excelente relacionamento interpessoal com clientes"], desejado:"Entendimento de mídia digital/offline, produção gráfica, audiovisual e eventos." }
+  },
+  "Direção de Arte": {
+    "Júnior":    { min:3300, max:5000, skills:["Domínio básico de ferramentas Adobe","Capacidade de seguir identidades visuais e desdobrar peças simples","Participação ativa em processos criativos","Imersão nos clientes e estudo das categorias","Entendimento da cultura da agência","Repertório criativo — atualizado sobre ideias premiadas"], desejado:"Noções/interesses em pelo menos uma ferramenta extra (motion design, IA, UI/UX, 3D)." },
+    "Pleno":     { min:5200, max:6000, skills:["Domínio total das ferramentas Adobe","Experiência com IA generativa","Criação de KV de campanhas de baixa complexidade","Capacidade de desdobrar campanhas para diferentes canais","Participação ativa em processos criativos","Boa interlocução com as demais áreas","Confiança para apresentar peças para clientes","Repertório criativo"], desejado:"Domínio de pelo menos uma ferramenta extra (3D, Motion, UI/UX)." },
+    "Sênior":    { min:6200, max:8900, skills:["Domínio total das ferramentas Adobe","Domínio de ferramentas de IA generativas","Criação de KVs para grandes campanhas e concorrências","Capacidade de liderança da jornada criativa","Capacidade de delegar, revisar e evoluir propostas criativas","Liderança de apresentações e pitches para clientes estratégicos"], desejado:"Domínio de ferramentas de IA visual e de vídeo." },
+    "Líder":     { min:9000, max:12000, skills:["Domínio total das ferramentas Adobe","Visão estratégica e estética para liderar a criação","Visão estratégica para entregas pró-ativas no cliente","Liderança, coordenação, treinamento e desenvolvimento da equipe","Coordenação de equipes multidisciplinares (arte, motion, social)","Repertório criativo atualizado nos principais prêmios"], desejado:"Domínio de ferramentas de IA visual e de vídeo." }
+  },
+  "Redação": {
+    "Júnior":    { min:3300, max:5000, skills:["Domínio básico das ferramentas Google Workspace","Bom domínio da língua portuguesa","Capacidade de seguir identidades visuais e desdobrar peças simples","Participação ativa em processos criativos","Imersão nos clientes e estudo das categorias","Repertório criativo atualizado"], desejado:"Noções/interesses em estrutura de roteiro. Entendimento básico em direção de arte." },
+    "Pleno":     { min:5200, max:7000, skills:["Domínio das ferramentas Google Workspace","Crivo técnico básico de peça criativa (DA, motion, filme)","Criação de KV de campanhas de baixa complexidade","Capacidade de desdobrar campanhas para diferentes canais","Participação ativa em processos criativos","Confiança para apresentar peças para clientes","Repertório criativo"], desejado:"Entendimento básico em direção de arte, produção de vídeo e motion." },
+    "Sênior":    { min:7200, max:9900, skills:["Domínio de estruturação de apresentação visual, linguagem e storytelling","Crivo técnico total de peça criativa","Criação de KVs para grandes campanhas e concorrências","Capacidade de liderança da jornada criativa","Capacidade de delegar, revisar e evoluir propostas criativas","Liderança de apresentações e pitches para clientes estratégicos"], desejado:"Entendimento em direção de arte, produção de vídeo e motion." },
+    "Líder":     { min:10000, max:12000, skills:["Visão estratégica e estética para liderar a criação dos clientes","Visão estratégica para entregas pró-ativas no cliente","Liderança, coordenação, treinamento e desenvolvimento da equipe","Coordenação de equipes multidisciplinares","Repertório criativo atualizado nos principais prêmios","Liderança e direcionamento de assistentes, juniores e plenos"], desejado:"" }
+  },
+  "Mídia": {
+    "Assistente":{ min:2500, max:3400, skills:["Noção básica das principais plataformas de mídia paga (Google, Meta, LinkedIn)","Capacidade de elaborar relatórios com dados básicos","Organização para manter custos dentro do orçamento","Boa comunicação com a equipe de mídia","Interesse em acompanhar tendências de mídia e novas plataformas","Participação em processos criativos como ouvinte/apoio"], desejado:"Noções/interesse em mídia offline (rádio, TV, OOH)." },
+    "Júnior":    { min:3500, max:4000, skills:["Conhecimento básico das principais plataformas de mídia paga","Capacidade de configurar campanhas simples (público, orçamento, anúncios)","Entendimento inicial de métricas (CTR, CPC, CPA, ROI)","Capacidade de elaborar relatórios com dados básicos","Organização para manter custos dentro do orçamento","Boa comunicação com pares, líderes e clientes"], desejado:"Noções de mídia offline. Certificação inicial em Google Ads ou Meta Ads." },
+    "Pleno":     { min:4100, max:6000, skills:["Domínio das principais plataformas de mídia digital (Google, Meta, LinkedIn, TikTok)","Planejamento e execução de campanhas de baixa e média complexidade","Capacidade de segmentar públicos com precisão e criar estratégias de remarketing","Habilidade para identificar gargalos e propor otimizações de performance","Criação de relatórios estratégicos com análises e recomendações","Boa interlocução com outras áreas (criação, BI, atendimento)"], desejado:"Certificações em Google Ads, Meta Blueprint. Noções de Data Studio/Looker." },
+    "Sênior":    { min:6300, max:8000, skills:["Domínio avançado de mídia digital (estratégia, execução e otimização)","Experiência em planejamento e gestão de campanhas de alta complexidade","Capacidade de liderar a estratégia de mídia online e offline para grandes clientes","Interlocução sênior com clientes em reuniões estratégicas","Forte habilidade analítica com foco em resultados financeiros e funil de conversão","Atuação consultiva junto a clientes, sugerindo oportunidades e inovações"], desejado:"Certificações avançadas. Conhecimento em modelos de atribuição e mix de marketing." },
+    "Líder":     { min:8500, max:11000, skills:["Domínio total das plataformas de mídia digital e experiência em mídia offline","Visão estratégica para estruturar planos de mídia multicanais","Supervisão e garantia da qualidade de todas as entregas de mídia","Gestão de orçamentos de grandes campanhas com controle de custos","Liderança e coordenação de equipe (distribuição de demandas, treinamentos)","Controle de comissões e métricas financeiras da área de mídia"], desejado:"Certificações avançadas. Conhecimento de BI e modelagem de dados. Experiência em automação e IA aplicada à mídia." }
+  }
+};
+
+// Mapeamento de palavras-chave no nome do cargo → área de skills
+function detectArea(roleName) {
+  const n = (roleName||'').toLowerCase();
+  if (n.includes('motion')) return 'Motion';
+  if (n.includes('mídia') || n.includes('midia') || n.includes('tráfego') || n.includes('trafego')) return 'Mídia';
+  if (n.includes('atendimento') || n.includes('contas')) return 'Atendimento';
+  if (n.includes('redator') || n.includes('redatora') || n.includes('redação')) {
+    if (n.includes('social') || n.includes('conteúdo') || n.includes('conteudo')) return 'Redação Social';
+    return 'Redação';
+  }
+  if (n.includes('social') || n.includes('listening')) return 'Listening';
+  if (n.includes('da ') || n.includes(' da') || n.includes('arte') || n.includes('criação') || n.includes('criativa') || n.includes('criativo')) return 'Direção de Arte';
+  if (n.includes('produção') || n.includes('producao') || n.includes('gp')) return 'Produção';
+  return null;
+}
+
+function getRefRange(person, level) {
+  if (!orgData || !level) return null;
+  const role = orgData.roles.find(r => r.id === person.role);
+  const area = detectArea(role?.name);
+  if (!area) return null;
+  const d = SKILLS_DB[area]?.[level];
+  if (!d) return null;
+  return { area, ...d };
+}
+
+// Níveis por área
+const AREA_LEVELS = {
+  "Produção":["Júnior","Pleno","Sênior","Líder"],
+  "Motion":["Júnior","Pleno","Sênior","Líder"],
+  "Redação Social":["Júnior","Pleno","Sênior","Líder"],
+  "Listening":["Júnior","Pleno","Sênior"],
+  "Atendimento":["Júnior","Pleno","Sênior","Líder","Diretor"],
+  "Direção de Arte":["Júnior","Pleno","Sênior","Líder"],
+  "Redação":["Júnior","Pleno","Sênior","Líder"],
+  "Mídia":["Assistente","Júnior","Pleno","Sênior","Líder"]
+};
+
+// ── ESTADO ───────────────────────────────────────────────
+let orgData = null;
+let salData = {};
+let currentTab = 'pessoas';
+let currentEditId = null;
+let currentSkillsArea = 'Atendimento';
+
+// ── SENHA ────────────────────────────────────────────────
+function checkPassword() {
+  const val = document.getElementById('lock-input').value;
+  if (val === APP_PASSWORD) {
+    document.getElementById('lock-screen').classList.add('hidden');
+    document.getElementById('app').style.display = 'block';
+    loadFirebase();
+  } else {
+    const inp = document.getElementById('lock-input');
+    inp.classList.add('error');
+    document.getElementById('lock-error').classList.add('show');
+    setTimeout(() => inp.classList.remove('error'), 400);
+    inp.value = ''; inp.focus();
+  }
+}
+document.getElementById('lock-input').addEventListener('keydown', e => { if(e.key==='Enter') checkPassword(); });
+function lockApp() {
+  document.getElementById('lock-screen').classList.remove('hidden');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lock-input').value = '';
+  document.getElementById('lock-error').classList.remove('show');
+}
+
+// ── TABS ─────────────────────────────────────────────────
+function switchTab(name, el) {
+  currentTab = name;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  ['pessoas','historico','skills'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name ? '' : 'none';
+  });
+  document.getElementById('toolbar-main').style.display = name==='skills' ? 'none' : '';
+  renderCurrentTab();
+}
+function renderCurrentTab() {
+  if (currentTab==='pessoas') renderPessoas();
+  else if (currentTab==='historico') renderHistorico();
+  else renderSkills();
+}
+
+// ── HELPERS ──────────────────────────────────────────────
+function fmt(v) { if (!v && v!==0) return null; return Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function initials(n) { return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+function fmtDate(s) { if(!s) return ''; return new Date(s+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}); }
+function lvClass(l) {
+  if(!l) return ''; const m = {'Assistente':'lv-assistente','Júnior':'lv-junior','Pleno':'lv-pleno','Sênior':'lv-senior','Líder':'lv-lider','Diretor':'lv-diretor'};
+  return m[l]||'';
+}
+
+// ── RENDER PESSOAS ───────────────────────────────────────
+function renderPessoas() {
+  if (!orgData) { document.getElementById('tab-pessoas').innerHTML = '<div class="empty-state"><p>Carregando dados do organograma...</p></div>'; return; }
+  const q = (document.getElementById('search-input').value||'').toLowerCase();
+  const fc = document.getElementById('filter-cargo').value;
+  const fn = document.getElementById('filter-nivel').value;
+
+  const people = orgData.people.filter(p => {
+    const role = orgData.roles.find(r=>r.id===p.role);
+    const rn = role?.name||'';
+    if (q && !p.name.toLowerCase().includes(q) && !rn.toLowerCase().includes(q)) return false;
+    if (fc && p.role!==fc) return false;
+    if (fn && (salData[p.id]?.level||'')!==fn) return false;
+    return true;
+  }).sort((a,b)=>a.name.localeCompare(b.name));
+
+  updateSummary(orgData.people);
+
+  let html = '<div class="table-wrap"><table><thead><tr><th>Pessoa</th><th>Cargo</th><th>Nível</th><th>Salário Atual</th><th>Faixa de Referência</th><th>Último Reajuste</th><th></th></tr></thead><tbody>';
+
+  if (!people.length) {
+    html += '<tr><td colspan="7"><div class="empty-state"><p>Nenhuma pessoa encontrada.</p></div></td></tr>';
+  }
+
+  people.forEach(p => {
+    const role = orgData.roles.find(r=>r.id===p.role);
+    const rn = role?.name||'—';
+    const sd = salData[p.id]||{};
+    const salary = sd.salary;
+    const level = sd.level||'';
+    const ref = getRefRange(p, level);
+    const lastAdj = (sd.history||[]).slice(-1)[0]||null;
+
+    // Faixa
+    let faixaHtml = '<span style="color:var(--text3);font-size:12px">—</span>';
+    let statusBadge = '';
+    if (ref) {
+      const rs = fmt(ref.min) + (ref.max ? ' – '+fmt(ref.max) : '+');
+      if (salary && ref.min) {
+        if (salary < ref.min) {
+          faixaHtml = `<span class="faixa-low">${rs}</span>`;
+          statusBadge = '<span class="badge b-low">Abaixo</span>';
+        } else if (ref.max && salary > ref.max) {
+          faixaHtml = `<span class="faixa-high">${rs}</span>`;
+          statusBadge = '<span class="badge b-high">Acima</span>';
+        } else {
+          faixaHtml = `<span class="faixa-ok">${rs}</span>`;
+          statusBadge = '<span class="badge b-ok">✓</span>';
+        }
+      } else {
+        faixaHtml = `<span class="faixa-neutral">${rs}</span>`;
+      }
+    } else if (level) {
+      faixaHtml = `<span style="color:var(--text3);font-size:11px">sem faixa para ${level}</span>`;
+    }
+
+    html += `<tr>
+      <td class="td-name"><div style="display:flex;align-items:center;gap:10px">
+        <div class="person-avatar" style="width:28px;height:28px;font-size:11px">${initials(p.name)}</div>${p.name}
+      </div></td>
+      <td style="color:var(--text2)">${rn}</td>
+      <td>${level ? `<span class="level-badge ${lvClass(level)}">${level}</span>` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
+      <td class="${!salary?'td-empty':'td-mono'}">${salary ? fmt(salary)+statusBadge : 'não cadastrado'}</td>
+      <td>${faixaHtml}</td>
+      <td style="font-size:12px;color:var(--text3)">${lastAdj ? fmtDate(lastAdj.date)+(lastAdj.reason?'<br><span style="color:var(--text2)">'+lastAdj.reason+'</span>':'') : '—'}</td>
+      <td style="text-align:right"><button class="btn-edit" onclick="openModal('${p.id}')">Editar</button></td>
+    </tr>`;
+  });
+
+  html += '</tbody></table></div>';
+  document.getElementById('tab-pessoas').innerHTML = html;
+}
+
+// ── RENDER HISTÓRICO ─────────────────────────────────────
+function renderHistorico() {
+  if (!orgData) return;
+  const q = (document.getElementById('search-input').value||'').toLowerCase();
+  let events = [];
+  orgData.people.forEach(p => {
+    const sd = salData[p.id]; if (!sd||!sd.history) return;
+    const role = orgData.roles.find(r=>r.id===p.role);
+    sd.history.forEach(h => events.push({person:p.name, role:role?.name||'—', ...h}));
+  });
+  events.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if (q) events = events.filter(e=>e.person.toLowerCase().includes(q)||(e.reason||'').toLowerCase().includes(q));
+
+  if (!events.length) { document.getElementById('tab-historico').innerHTML='<div class="empty-state"><p>Nenhum reajuste registrado ainda.</p></div>'; return; }
+
+  let html = '<div class="table-wrap"><div class="history-list">';
+  events.forEach(e => {
+    const type = e.oldSalary ? (e.salary>=e.oldSalary?'raise':'cut') : 'new';
+    const label = type==='new'?'Cadastro':type==='raise'?'Reajuste':'Redução';
+    html += `<div class="history-item">
+      <div class="h-dot h-${type}"></div>
+      <div class="h-info">
+        <div class="h-name">${e.person}</div>
+        <div class="h-detail" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">${e.role}</div>
+        <div class="h-detail">${label}${e.reason?' · '+e.reason:''}</div>
+      </div>
+      <div class="h-val">
+        ${e.oldSalary?`<div class="h-old">${fmt(e.oldSalary)}</div>`:''}
+        <div class="h-new">${fmt(e.salary)}</div>
+      </div>
+      <div class="h-date">${fmtDate(e.date)}</div>
+    </div>`;
+  });
+  html += '</div></div>';
+  document.getElementById('tab-historico').innerHTML = html;
+}
+
+// ── RENDER SKILLS ─────────────────────────────────────────
+function renderSkills() {
+  const areas = Object.keys(SKILLS_DB);
+  let html = '<div class="area-pills">';
+  areas.forEach(a => {
+    html += `<button class="area-pill ${a===currentSkillsArea?'active':''}" onclick="setSkillsArea('${a}')">${a}</button>`;
+  });
+  html += '</div><div class="skills-grid">';
+  Object.entries(SKILLS_DB[currentSkillsArea]).forEach(([lv, d]) => {
+    const rs = d.min ? fmt(d.min)+(d.max?' – '+fmt(d.max):'+') : '';
+    html += `<div class="skills-col">
+      <div class="skills-col-head">
+        <div class="skills-col-level">${lv}</div>
+        <div class="skills-col-range">${rs}</div>
+      </div>
+      <div class="skills-col-body">
+        ${d.skills.map(s=>`<div class="skill-item">· ${s}</div>`).join('')}
+        ${d.desejado?`<div class="skill-desejado"><strong>Desejado</strong>${d.desejado}</div>`:''}
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('tab-skills').innerHTML = html;
+}
+function setSkillsArea(a) { currentSkillsArea = a; renderSkills(); }
+
+// ── SUMMARY ──────────────────────────────────────────────
+function updateSummary(people) {
+  const ws = people.filter(p=>salData[p.id]?.salary);
+  const total = ws.reduce((s,p)=>s+(salData[p.id]?.salary||0),0);
+  document.getElementById('summary-chips').innerHTML = `
+    <div class="chip blue">${people.length} pessoas</div>
+    <div class="chip green">Folha: ${fmt(total)||'R$ 0'}</div>
+    <div class="chip">${ws.length}/${people.length} com salário</div>`;
+}
+
+// ── MODAL ─────────────────────────────────────────────────
+function openModal(personId) {
+  const person = orgData.people.find(p=>p.id===personId); if(!person) return;
+  const role = orgData.roles.find(r=>r.id===person.role);
+  const sd = salData[personId]||{};
+  currentEditId = personId;
+
+  const area = detectArea(role?.name);
+  const levels = area&&AREA_LEVELS[area] ? AREA_LEVELS[area] : ['Assistente','Júnior','Pleno','Sênior','Líder','Diretor'];
+  const lvOpts = levels.map(l=>`<option value="${l}" ${sd.level===l?'selected':''}>${l}</option>`).join('');
+
+  document.getElementById('modal-title').textContent = 'Editar Salário';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="person-header">
+      <div class="person-avatar">${initials(person.name)}</div>
+      <div>
+        <div class="person-name">${person.name}</div>
+        <div class="person-role">${role?.name||'—'}${area?` · <span style="color:var(--text3)">${area}</span>`:''}</div>
+      </div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-row" style="margin-bottom:0">
+        <label>Nível</label>
+        <select id="f-level" class="form-select" onchange="updatePreview('${personId}')">
+          <option value="">Selecione...</option>${lvOpts}
+        </select>
+      </div>
+      <div class="form-row" style="margin-bottom:0">
+        <label>Salário Atual (R$)</label>
+        <input type="number" id="f-salary" class="form-input" placeholder="Ex: 5000" value="${sd.salary||''}" step="100" oninput="updatePreview('${personId}')">
+      </div>
+    </div>
+    <div id="faixa-preview" class="faixa-preview"></div>
+    <div class="form-row-2">
+      <div class="form-row" style="margin-bottom:0">
+        <label>Data do Reajuste</label>
+        <input type="date" id="f-date" class="form-input" value="${new Date().toISOString().slice(0,10)}">
+      </div>
+      <div class="form-row" style="margin-bottom:0">
+        <label>Motivo</label>
+        <select id="f-reason" class="form-select">
+          <option value="">Selecione...</option>
+          <option>Admissão</option><option>Mérito</option><option>Promoção</option>
+          <option>Dissídio</option><option>Equiparação</option><option>Outro</option>
+        </select>
+      </div>
+    </div>
+    ${sd.history?.length ? `
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3);margin-top:20px;margin-bottom:8px">Histórico</div>
+    <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      ${[...sd.history].reverse().slice(0,5).map(h=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px">
+          <span style="color:var(--text3);font-family:'DM Mono',monospace;min-width:80px">${fmtDate(h.date)}</span>
+          <span style="flex:1;color:var(--text2)">${h.reason||'—'}</span>
+          <span style="font-family:'DM Mono',monospace;font-weight:500">${fmt(h.salary)}</span>
+        </div>`).join('')}
+    </div>` : ''}
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+  if (sd.level) updatePreview(personId);
+}
+
+function updatePreview(personId) {
+  const person = orgData?.people.find(p=>p.id===personId); if(!person) return;
+  const level = document.getElementById('f-level')?.value;
+  const salary = parseFloat(document.getElementById('f-salary')?.value);
+  const ref = getRefRange(person, level);
+  const el = document.getElementById('faixa-preview'); if(!el) return;
+  if (!ref) { el.classList.remove('show'); return; }
+  const rs = fmt(ref.min)+(ref.max?' – '+fmt(ref.max):'+');
+  let status = '';
+  if (salary && ref.min) {
+    if (salary<ref.min) status=`<strong style="color:var(--red)"> · Abaixo da faixa</strong>`;
+    else if (ref.max&&salary>ref.max) status=`<strong style="color:var(--blue)"> · Acima da faixa</strong>`;
+    else status=`<strong style="color:var(--green)"> · Dentro da faixa ✓</strong>`;
+  }
+  el.innerHTML = `Faixa <strong>${level}</strong> em ${ref.area}: <strong>${rs}</strong>${status}`;
+  el.classList.add('show');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); currentEditId=null; }
+
+function saveModal() {
+  const salary = parseFloat(document.getElementById('f-salary').value);
+  const date = document.getElementById('f-date').value;
+  const reason = document.getElementById('f-reason').value;
+  const level = document.getElementById('f-level').value;
+  if (!salary||isNaN(salary)) { showToast('Informe um salário válido.'); return; }
+  if (!salData[currentEditId]) salData[currentEditId]={history:[]};
+  const sd = salData[currentEditId];
+  if (!sd.history) sd.history=[];
+  sd.history.push({salary, date, reason, oldSalary:sd.salary||null});
+  sd.salary = salary;
+  sd.level = level||sd.level||'';
+  saveSalarios(); closeModal(); renderCurrentTab();
+  showToast('Salário salvo!');
+}
+
+// ── FILTRO ────────────────────────────────────────────────
+function populateCargoFilter() {
+  if (!orgData) return;
+  const sel = document.getElementById('filter-cargo');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos os cargos</option>';
+  [...orgData.roles].sort((a,b)=>a.name.localeCompare(b.name)).forEach(r => {
+    const o = document.createElement('option');
+    o.value=r.id; o.textContent=r.name; if(r.id===cur) o.selected=true;
+    sel.appendChild(o);
+  });
+}
+
+// ── EXPORT ────────────────────────────────────────────────
+function exportCSV() {
+  if (!orgData) return;
+  let rows=[['Nome','Cargo','Área','Nível','Salário Atual','Faixa Mín','Faixa Máx','Status','Último Reajuste','Motivo']];
+  [...orgData.people].sort((a,b)=>a.name.localeCompare(b.name)).forEach(p => {
+    const role = orgData.roles.find(r=>r.id===p.role);
+    const sd = salData[p.id]||{};
+    const ref = getRefRange(p,sd.level);
+    const last = sd.history?.slice(-1)[0]||null;
+    let st='';
+    if (sd.salary&&ref?.min) { if(sd.salary<ref.min) st='Abaixo'; else if(ref.max&&sd.salary>ref.max) st='Acima'; else st='OK'; }
+    rows.push([p.name,role?.name||'',ref?.area||'',sd.level||'',sd.salary||'',ref?.min||'',ref?.max||'',st,last?.date||'',last?.reason||'']);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);
+  a.download='cargos-salarios.csv'; a.click();
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── FIREBASE ──────────────────────────────────────────────
+function setStatus(msg,color) {
+  const el=document.getElementById('fb-status'); if(!el) return;
+  el.textContent=msg; el.style.background=color||'#333';
+  el.style.opacity=msg?'1':'0';
+  if(msg) setTimeout(()=>{if(el.textContent===msg)el.style.opacity='0';},3000);
+}
+function saveSalarios() { if(window._fbSalSet) window._fbSalSet({salData,_version:'sal_v1'}); }
+function loadFirebase() {
+  const s1=document.createElement('script');
+  s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
+  s1.onload=()=>{
+    const s2=document.createElement('script');
+    s2.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js';
+    s2.onload=()=>initFirebase();
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s1);
+}
+function initFirebase() {
+  try {
+    const cfg={apiKey:"AIzaSyCfYFSZQEDSbB0Z6Cxzu2b7IyYxucqy8Zo",authDomain:"organograma-a2a1f.firebaseapp.com",databaseURL:"https://organograma-a2a1f-default-rtdb.firebaseio.com",projectId:"organograma-a2a1f",storageBucket:"organograma-a2a1f.firebasestorage.app",messagingSenderId:"798697234622",appId:"1:798697234622:web:02174f16cc714c54883eef"};
+    if(!firebase.apps||!firebase.apps.length) firebase.initializeApp(cfg);
+    const db=firebase.database();
+    db.ref('organograma').on('value',snap=>{
+      const d=snap.val();
+      if(d&&d._version==='v4'){orgData=d;populateCargoFilter();renderCurrentTab();setStatus('✓ Sincronizado','#1A7A4A');}
+    });
+    const fbSal=db.ref('salarios');
+    window._fbSalSet=d=>fbSal.set(d);
+    fbSal.on('value',snap=>{
+      const d=snap.val();
+      if(d&&d._version==='sal_v1'){salData=d.salData||{};renderCurrentTab();}
+    });
+  } catch(e){console.warn('Firebase erro:',e);setStatus('Erro Firebase','#C0392B');}
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+</script>
+</body>
+</html>
