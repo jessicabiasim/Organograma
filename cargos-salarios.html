@@ -65,7 +65,18 @@
   .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--text3); }
   .search-input { width: 100%; padding: 8px 12px 8px 34px; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 13px; background: var(--bg); outline: none; }
   .search-input:focus { border-color: var(--blue); background: white; }
-  .filter-select { padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 13px; background: var(--bg); outline: none; cursor: pointer; }
+  /* MULTI-SELECT DROPDOWN */
+  .ms-wrap { position: relative; }
+  .ms-btn { padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 13px; background: var(--bg); cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; user-select: none; }
+  .ms-btn:hover { border-color: var(--border2); }
+  .ms-btn.has-filter { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }
+  .ms-dropdown { position: absolute; top: calc(100% + 4px); left: 0; min-width: 200px; background: var(--surface); border: 1.5px solid var(--border2); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); z-index: 100; padding: 6px; display: none; max-height: 280px; overflow-y: auto; }
+  .ms-dropdown.open { display: block; }
+  .ms-option { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--radius); cursor: pointer; font-size: 13px; transition: background 0.1s; }
+  .ms-option:hover { background: var(--surface2); }
+  .ms-option input[type=checkbox] { accent-color: var(--blue); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+  .ms-clear { width: 100%; padding: 6px 10px; font-size: 12px; color: var(--red); background: none; border: none; border-top: 1px solid var(--border); cursor: pointer; text-align: left; margin-top: 4px; font-family: 'DM Sans', sans-serif; }
+  .ms-clear:hover { background: var(--red-light); border-radius: 0 0 var(--radius) var(--radius); }
   .toolbar-sep { flex: 1; }
   .summary-chips { display: flex; gap: 8px; }
   .chip { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; background: var(--surface2); color: var(--text2); }
@@ -147,6 +158,8 @@
   .h-old { color: var(--text3); text-decoration: line-through; font-size: 11px; }
   .h-new { color: var(--green); }
   .h-date { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: 12px; }
+  .btn-del-hist { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 14px; padding: 2px 6px; border-radius: 4px; line-height: 1; transition: color 0.1s, background 0.1s; }
+  .btn-del-hist:hover { color: var(--red); background: var(--red-light); }
 
   /* SKILLS */
   .area-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -163,6 +176,37 @@
   .skill-item:last-child { border-bottom: none; }
   .skill-desejado { margin-top: 10px; padding: 8px 10px; background: var(--blue-light); border-radius: var(--radius); font-size: 11px; color: var(--blue); }
   .skill-desejado strong { display: block; margin-bottom: 3px; font-weight: 600; }
+
+  /* SKILLS EDIT */
+  .skills-col-head { display: flex; align-items: flex-start; justify-content: space-between; }
+  .skills-col-head-left { flex: 1; }
+  .btn-edit-skill { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 11px; padding: 2px 6px; border-radius: 4px; opacity: 0; transition: opacity 0.15s, color 0.1s; }
+  .skills-col:hover .btn-edit-skill { opacity: 1; }
+  .btn-edit-skill:hover { color: var(--blue); }
+  .skill-item { display: flex; align-items: flex-start; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .skill-item:last-child { border-bottom: none; }
+  .skill-item-text { flex: 1; }
+  .btn-del-skill { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 12px; padding: 1px 4px; line-height: 1; border-radius: 3px; opacity: 0; transition: opacity 0.1s; flex-shrink: 0; margin-top: 1px; }
+  .skill-item:hover .btn-del-skill { opacity: 1; }
+  .btn-del-skill:hover { color: var(--red); background: var(--red-light); }
+  .add-skill-row { display: flex; gap: 6px; margin-top: 8px; }
+  .add-skill-input { flex: 1; padding: 6px 8px; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 12px; outline: none; }
+  .add-skill-input:focus { border-color: var(--blue); }
+  .btn-add-skill { padding: 6px 10px; background: var(--surface2); border: 1.5px solid var(--border); border-radius: var(--radius); font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+  .btn-add-skill:hover { background: var(--border); }
+  .skill-range-row { display: flex; gap: 6px; margin-bottom: 8px; }
+  .skill-range-input { width: 90px; padding: 5px 8px; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: 'DM Mono', monospace; font-size: 12px; outline: none; }
+  .skill-range-input:focus { border-color: var(--blue); }
+  .skills-actions-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .btn-add-area { padding: 7px 14px; border-radius: 20px; border: 1.5px dashed var(--border2); background: var(--surface); font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text2); font-weight: 500; transition: all 0.15s; }
+  .btn-add-area:hover { border-color: var(--green); color: var(--green); background: var(--green-light); }
+  .btn-add-level { padding: 5px 12px; border-radius: var(--radius); border: 1.5px dashed var(--border2); background: var(--surface); font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text2); transition: all 0.15s; }
+  .btn-add-level:hover { border-color: var(--green); color: var(--green); background: var(--green-light); }
+  .btn-del-area { padding: 5px 10px; background: none; border: 1px solid var(--border); border-radius: var(--radius); font-size: 11px; cursor: pointer; color: var(--text3); transition: all 0.1s; }
+  .btn-del-area:hover { color: var(--red); border-color: var(--red); background: var(--red-light); }
+  .btn-del-level { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 11px; padding: 2px 5px; border-radius: 3px; opacity: 0; transition: opacity 0.1s; }
+  .skills-col:hover .btn-del-level { opacity: 1; }
+  .btn-del-level:hover { color: var(--red); background: var(--red-light); }
 
   .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
   #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--accent); color: var(--accent-fg); padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.3s, transform 0.3s; z-index: 999; pointer-events: none; }
@@ -218,14 +262,22 @@
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" id="search-input" class="search-input" placeholder="Buscar pessoa ou cargo..." oninput="renderCurrentTab()">
     </div>
-    <select id="filter-cargo" class="filter-select" onchange="renderCurrentTab()">
-      <option value="">Todos os cargos</option>
-    </select>
-    <select id="filter-nivel" class="filter-select" onchange="renderCurrentTab()">
-      <option value="">Todos os níveis</option>
-      <option>Assistente</option><option>Júnior</option><option>Pleno</option>
-      <option>Sênior</option><option>Líder</option><option>Diretor</option>
-    </select>
+    <div class="ms-wrap" id="ms-cargo-wrap">
+      <button class="ms-btn" id="ms-cargo-btn" onclick="toggleMs('cargo')">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+        <span id="ms-cargo-label">Cargo</span>
+        <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="ms-dropdown" id="ms-cargo-dd"></div>
+    </div>
+    <div class="ms-wrap" id="ms-nivel-wrap">
+      <button class="ms-btn" id="ms-nivel-btn" onclick="toggleMs('nivel')">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+        <span id="ms-nivel-label">Nível</span>
+        <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="ms-dropdown" id="ms-nivel-dd"></div>
+    </div>
     <div class="toolbar-sep"></div>
     <div class="summary-chips" id="summary-chips"></div>
   </div>
@@ -255,7 +307,7 @@
 <script>
 // ── SENHA ────────────────────────────────────────────────
 // ⚠️ Troque a senha abaixo antes de publicar!
-const APP_PASSWORD = 'rh2024';
+const APP_PASSWORD = 'madhit25@';
 
 // ── SKILLS DATA ──────────────────────────────────────────
 const SKILLS_DB = {
@@ -398,6 +450,13 @@ function renderCurrentTab() {
 // ── HELPERS ──────────────────────────────────────────────
 function fmt(v) { if (!v && v!==0) return null; return Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 function initials(n) { return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+function avatarHtml(person, size=28) {
+  if (person.photo) {
+    return `<img src="${person.photo}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="${initials(person.name)}">`;
+  }
+  const fs = size <= 28 ? 11 : 13;
+  return `<div class="person-avatar" style="width:${size}px;height:${size}px;font-size:${fs}px">${initials(person.name)}</div>`;
+}
 function fmtDate(s) { if(!s) return ''; return new Date(s+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}); }
 function lvClass(l) {
   if(!l) return ''; const m = {'Assistente':'lv-assistente','Júnior':'lv-junior','Pleno':'lv-pleno','Sênior':'lv-senior','Líder':'lv-lider','Diretor':'lv-diretor'};
@@ -408,15 +467,13 @@ function lvClass(l) {
 function renderPessoas() {
   if (!orgData) { document.getElementById('tab-pessoas').innerHTML = '<div class="empty-state"><p>Carregando dados do organograma...</p></div>'; return; }
   const q = (document.getElementById('search-input').value||'').toLowerCase();
-  const fc = document.getElementById('filter-cargo').value;
-  const fn = document.getElementById('filter-nivel').value;
 
   const people = orgData.people.filter(p => {
     const role = orgData.roles.find(r=>r.id===p.role);
     const rn = role?.name||'';
     if (q && !p.name.toLowerCase().includes(q) && !rn.toLowerCase().includes(q)) return false;
-    if (fc && p.role!==fc) return false;
-    if (fn && (salData[p.id]?.level||'')!==fn) return false;
+    if (filterCargos.size && !filterCargos.has(p.role)) return false;
+    if (filterNiveis.size && !filterNiveis.has(salData[p.id]?.level||'')) return false;
     return true;
   }).sort((a,b)=>a.name.localeCompare(b.name));
 
@@ -462,7 +519,7 @@ function renderPessoas() {
 
     html += `<tr>
       <td class="td-name"><div style="display:flex;align-items:center;gap:10px">
-        <div class="person-avatar" style="width:28px;height:28px;font-size:11px">${initials(p.name)}</div>${p.name}
+        ${avatarHtml(p, 28)}${p.name}
       </div></td>
       <td style="color:var(--text2)">${rn}</td>
       <td>${level ? `<span class="level-badge ${lvClass(level)}">${level}</span>` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
@@ -485,7 +542,7 @@ function renderHistorico() {
   orgData.people.forEach(p => {
     const sd = salData[p.id]; if (!sd||!sd.history) return;
     const role = orgData.roles.find(r=>r.id===p.role);
-    sd.history.forEach(h => events.push({person:p.name, role:role?.name||'—', ...h}));
+    sd.history.forEach((h,i) => events.push({person:p.name, personId:p.id, idx:i, role:role?.name||'—', ...h}));
   });
   events.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   if (q) events = events.filter(e=>e.person.toLowerCase().includes(q)||(e.reason||'').toLowerCase().includes(q));
@@ -508,30 +565,135 @@ function renderHistorico() {
         <div class="h-new">${fmt(e.salary)}</div>
       </div>
       <div class="h-date">${fmtDate(e.date)}</div>
+      <button class="btn-del-hist" onclick="deleteHistory('${e.personId}',${e.idx})" title="Excluir">✕</button>
     </div>`;
   });
   html += '</div></div>';
   document.getElementById('tab-historico').innerHTML = html;
 }
 
+// ── MULTI-SELECT LOGIC ────────────────────────────────────
+let filterCargos = new Set();
+let filterNiveis = new Set();
+const ALL_NIVEIS = ['Assistente','Júnior','Pleno','Sênior','Líder','Diretor'];
+
+function toggleMs(type) {
+  const dd = document.getElementById('ms-'+type+'-dd');
+  const other = type==='cargo' ? 'nivel' : 'cargo';
+  document.getElementById('ms-'+other+'-dd').classList.remove('open');
+  dd.classList.toggle('open');
+  if (dd.classList.contains('open')) {
+    if (type==='cargo') buildCargoDd();
+    else buildNivelDd();
+  }
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ms-wrap')) {
+    document.querySelectorAll('.ms-dropdown').forEach(d=>d.classList.remove('open'));
+  }
+});
+function buildCargoDd() {
+  if (!orgData) return;
+  const dd = document.getElementById('ms-cargo-dd');
+  let html = [...orgData.roles].sort((a,b)=>a.name.localeCompare(b.name)).map(r =>
+    `<label class="ms-option"><input type="checkbox" ${filterCargos.has(r.id)?'checked':''} onchange="toggleCargoFilter('${r.id}',this.checked)"><span>${r.name}</span></label>`
+  ).join('');
+  if (filterCargos.size) html += `<button class="ms-clear" onclick="clearFilter('cargo')">✕ Limpar filtro de cargo</button>`;
+  dd.innerHTML = html;
+}
+function buildNivelDd() {
+  const dd = document.getElementById('ms-nivel-dd');
+  let html = ALL_NIVEIS.map(n =>
+    `<label class="ms-option"><input type="checkbox" ${filterNiveis.has(n)?'checked':''} onchange="toggleNivelFilter('${n}',this.checked)"><span>${n}</span></label>`
+  ).join('');
+  if (filterNiveis.size) html += `<button class="ms-clear" onclick="clearFilter('nivel')">✕ Limpar filtro de nível</button>`;
+  dd.innerHTML = html;
+}
+function toggleCargoFilter(id, checked) {
+  if (checked) filterCargos.add(id); else filterCargos.delete(id);
+  updateMsBtn('cargo');
+  renderCurrentTab();
+  buildCargoDd();
+}
+function toggleNivelFilter(n, checked) {
+  if (checked) filterNiveis.add(n); else filterNiveis.delete(n);
+  updateMsBtn('nivel');
+  renderCurrentTab();
+  buildNivelDd();
+}
+function clearFilter(type) {
+  if (type==='cargo') { filterCargos.clear(); updateMsBtn('cargo'); }
+  else { filterNiveis.clear(); updateMsBtn('nivel'); }
+  document.getElementById('ms-'+type+'-dd').classList.remove('open');
+  renderCurrentTab();
+}
+function updateMsBtn(type) {
+  const set = type==='cargo' ? filterCargos : filterNiveis;
+  const btn = document.getElementById('ms-'+type+'-btn');
+  const lbl = document.getElementById('ms-'+type+'-label');
+  if (set.size === 0) {
+    btn.classList.remove('has-filter');
+    lbl.textContent = type==='cargo' ? 'Cargo' : 'Nível';
+  } else {
+    btn.classList.add('has-filter');
+    lbl.textContent = `${type==='cargo'?'Cargo':'Nível'} (${set.size})`;
+  }
+}
+
 // ── RENDER SKILLS ─────────────────────────────────────────
 function renderSkills() {
   const areas = Object.keys(SKILLS_DB);
-  let html = '<div class="area-pills">';
+  let html = '<div class="skills-actions-bar">';
+  // Area pills
   areas.forEach(a => {
     html += `<button class="area-pill ${a===currentSkillsArea?'active':''}" onclick="setSkillsArea('${a}')">${a}</button>`;
   });
-  html += '</div><div class="skills-grid">';
+  html += `<button class="btn-add-area" onclick="addArea()">+ Nova área</button>`;
+  html += '</div>';
+
+  // Action bar for current area
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:600">${currentSkillsArea}</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-add-level" onclick="addLevel()">+ Novo nível</button>
+      <button class="btn-del-area" onclick="deleteArea()">Excluir área</button>
+    </div>
+  </div>`;
+
+  html += '<div class="skills-grid">';
   Object.entries(SKILLS_DB[currentSkillsArea]).forEach(([lv, d]) => {
-    const rs = d.min ? fmt(d.min)+(d.max?' – '+fmt(d.max):'+') : '';
+    const safeArea = encodeURIComponent(currentSkillsArea);
+    const safeLv = encodeURIComponent(lv);
     html += `<div class="skills-col">
-      <div class="skills-col-head">
-        <div class="skills-col-level">${lv}</div>
-        <div class="skills-col-range">${rs}</div>
+      <div class="skills-col-head" style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface2)">
+        <div class="skills-col-head-left">
+          <div class="skills-col-level">${lv}</div>
+          <div class="skill-range-row" style="margin-top:6px">
+            <input class="skill-range-input" type="number" placeholder="Mín" value="${d.min||''}" step="100"
+              onchange="updateRange('${safeArea}','${safeLv}','min',this.value)" title="Salário mínimo">
+            <span style="color:var(--text3);align-self:center;font-size:11px">–</span>
+            <input class="skill-range-input" type="number" placeholder="Máx" value="${d.max||''}" step="100"
+              onchange="updateRange('${safeArea}','${safeLv}','max',this.value)" title="Salário máximo">
+          </div>
+        </div>
+        <button class="btn-del-level" onclick="deleteLevel('${safeArea}','${safeLv}')" title="Excluir nível">✕</button>
       </div>
       <div class="skills-col-body">
-        ${d.skills.map(s=>`<div class="skill-item">· ${s}</div>`).join('')}
-        ${d.desejado?`<div class="skill-desejado"><strong>Desejado</strong>${d.desejado}</div>`:''}
+        ${d.skills.map((s,i)=>`<div class="skill-item">
+          <span class="skill-item-text">· ${s}</span>
+          <button class="btn-del-skill" onclick="deleteSkill('${safeArea}','${safeLv}',${i})" title="Excluir">✕</button>
+        </div>`).join('')}
+        <div class="add-skill-row">
+          <input class="add-skill-input" type="text" placeholder="Nova skill..." id="new-skill-${safeArea}-${safeLv}"
+            onkeydown="if(event.key==='Enter')addSkill('${safeArea}','${safeLv}')">
+          <button class="btn-add-skill" onclick="addSkill('${safeArea}','${safeLv}')">+ Add</button>
+        </div>
+        <div style="margin-top:8px">
+          <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px">DESEJADO</div>
+          <textarea style="width:100%;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:11px;padding:6px 8px;resize:vertical;outline:none;min-height:50px" 
+            placeholder="Skills desejadas..."
+            onchange="updateDesejado('${safeArea}','${safeLv}',this.value)">${d.desejado||''}</textarea>
+        </div>
       </div>
     </div>`;
   });
@@ -539,6 +701,79 @@ function renderSkills() {
   document.getElementById('tab-skills').innerHTML = html;
 }
 function setSkillsArea(a) { currentSkillsArea = a; renderSkills(); }
+
+// ── SKILLS EDIT ACTIONS ───────────────────────────────────
+function skillsKey(encodedArea) { return decodeURIComponent(encodedArea); }
+function levelKey(encodedLv) { return decodeURIComponent(encodedLv); }
+
+function updateRange(eArea, eLv, field, val) {
+  const area=skillsKey(eArea), lv=levelKey(eLv);
+  const n = parseFloat(val)||null;
+  SKILLS_DB[area][lv][field] = n;
+  saveSkills();
+  showToast('Faixa atualizada!');
+}
+function deleteSkill(eArea, eLv, idx) {
+  const area=skillsKey(eArea), lv=levelKey(eLv);
+  SKILLS_DB[area][lv].skills.splice(idx,1);
+  saveSkills(); renderSkills();
+  showToast('Skill removida.');
+}
+function addSkill(eArea, eLv) {
+  const area=skillsKey(eArea), lv=levelKey(eLv);
+  const inp = document.getElementById(`new-skill-${eArea}-${eLv}`);
+  const val = inp?.value.trim();
+  if (!val) return;
+  SKILLS_DB[area][lv].skills.push(val);
+  inp.value='';
+  saveSkills(); renderSkills();
+  showToast('Skill adicionada!');
+}
+function updateDesejado(eArea, eLv, val) {
+  const area=skillsKey(eArea), lv=levelKey(eLv);
+  SKILLS_DB[area][lv].desejado = val.trim();
+  saveSkills();
+}
+function deleteLevel(eArea, eLv) {
+  const area=skillsKey(eArea), lv=levelKey(eLv);
+  if (!confirm(`Excluir o nível "${lv}" de ${area}?`)) return;
+  delete SKILLS_DB[area][lv];
+  saveSkills(); renderSkills();
+  showToast(`Nível ${lv} excluído.`);
+}
+function addLevel() {
+  const lv = prompt('Nome do novo nível (ex: Trainee):');
+  if (!lv || !lv.trim()) return;
+  const lvt = lv.trim();
+  if (SKILLS_DB[currentSkillsArea][lvt]) { showToast('Nível já existe.'); return; }
+  SKILLS_DB[currentSkillsArea][lvt] = { min:null, max:null, skills:[], desejado:'' };
+  saveSkills(); renderSkills();
+  showToast(`Nível "${lvt}" criado!`);
+}
+function deleteArea() {
+  if (!confirm(`Excluir a área "${currentSkillsArea}" e todas as suas skills?`)) return;
+  delete SKILLS_DB[currentSkillsArea];
+  const areas = Object.keys(SKILLS_DB);
+  currentSkillsArea = areas.length ? areas[0] : '';
+  if (!currentSkillsArea) { SKILLS_DB['Nova Área'] = {}; currentSkillsArea='Nova Área'; }
+  saveSkills(); renderSkills();
+  showToast('Área excluída.');
+}
+function addArea() {
+  const name = prompt('Nome da nova área (ex: BI, Social):');
+  if (!name || !name.trim()) return;
+  const nt = name.trim();
+  if (SKILLS_DB[nt]) { showToast('Área já existe.'); return; }
+  SKILLS_DB[nt] = { 'Júnior': { min:null, max:null, skills:[], desejado:'' } };
+  currentSkillsArea = nt;
+  saveSkills(); renderSkills();
+  showToast(`Área "${nt}" criada!`);
+}
+function saveSkills() {
+  if (window._fbSalSet) {
+    window._fbSalSet({ salData, skillsDB: SKILLS_DB, _version:'sal_v1' });
+  }
+}
 
 // ── SUMMARY ──────────────────────────────────────────────
 function updateSummary(people) {
@@ -564,7 +799,7 @@ function openModal(personId) {
   document.getElementById('modal-title').textContent = 'Editar Salário';
   document.getElementById('modal-body').innerHTML = `
     <div class="person-header">
-      <div class="person-avatar">${initials(person.name)}</div>
+      ${avatarHtml(person, 36)}
       <div>
         <div class="person-name">${person.name}</div>
         <div class="person-role">${role?.name||'—'}${area?` · <span style="color:var(--text3)">${area}</span>`:''}</div>
@@ -600,11 +835,12 @@ function openModal(personId) {
     ${sd.history?.length ? `
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3);margin-top:20px;margin-bottom:8px">Histórico</div>
     <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-      ${[...sd.history].reverse().slice(0,5).map(h=>`
+      ${[...sd.history].map((h,i)=>`
         <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px">
           <span style="color:var(--text3);font-family:'DM Mono',monospace;min-width:80px">${fmtDate(h.date)}</span>
           <span style="flex:1;color:var(--text2)">${h.reason||'—'}</span>
           <span style="font-family:'DM Mono',monospace;font-weight:500">${fmt(h.salary)}</span>
+          <button class="btn-del-hist" onclick="deleteHistory('${personId}',${i})" title="Excluir este reajuste">✕</button>
         </div>`).join('')}
     </div>` : ''}
   `;
@@ -632,6 +868,22 @@ function updatePreview(personId) {
 
 function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); currentEditId=null; }
 
+function deleteHistory(personId, index) {
+  if (!confirm('Excluir este reajuste do histórico?')) return;
+  const sd = salData[personId]; if (!sd||!sd.history) return;
+  sd.history.splice(index, 1);
+  // Atualiza salário atual para o último registro restante
+  if (sd.history.length > 0) {
+    sd.salary = sd.history[sd.history.length-1].salary;
+  } else {
+    sd.salary = null;
+  }
+  saveSalarios();
+  // Reabre o modal atualizado
+  openModal(personId);
+  showToast('Reajuste excluído.');
+}
+
 function saveModal() {
   const salary = parseFloat(document.getElementById('f-salary').value);
   const date = document.getElementById('f-date').value;
@@ -650,15 +902,7 @@ function saveModal() {
 
 // ── FILTRO ────────────────────────────────────────────────
 function populateCargoFilter() {
-  if (!orgData) return;
-  const sel = document.getElementById('filter-cargo');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">Todos os cargos</option>';
-  [...orgData.roles].sort((a,b)=>a.name.localeCompare(b.name)).forEach(r => {
-    const o = document.createElement('option');
-    o.value=r.id; o.textContent=r.name; if(r.id===cur) o.selected=true;
-    sel.appendChild(o);
-  });
+  // cargo filter is now dynamic multi-select, no static population needed
 }
 
 // ── EXPORT ────────────────────────────────────────────────
@@ -693,7 +937,7 @@ function setStatus(msg,color) {
   el.style.opacity=msg?'1':'0';
   if(msg) setTimeout(()=>{if(el.textContent===msg)el.style.opacity='0';},3000);
 }
-function saveSalarios() { if(window._fbSalSet) window._fbSalSet({salData,_version:'sal_v1'}); }
+function saveSalarios() { if(window._fbSalSet) window._fbSalSet({salData, skillsDB:SKILLS_DB, _version:'sal_v1'}); }
 function loadFirebase() {
   const s1=document.createElement('script');
   s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
@@ -718,7 +962,15 @@ function initFirebase() {
     window._fbSalSet=d=>fbSal.set(d);
     fbSal.on('value',snap=>{
       const d=snap.val();
-      if(d&&d._version==='sal_v1'){salData=d.salData||{};renderCurrentTab();}
+      if(d&&d._version==='sal_v1'){
+        salData=d.salData||{};
+        // Merge saved skills into SKILLS_DB (Firebase overrides defaults if present)
+        if(d.skillsDB) {
+          Object.assign(SKILLS_DB, d.skillsDB);
+          // Restore any areas in default that aren't in Firebase
+        }
+        renderCurrentTab();
+      }
     });
   } catch(e){console.warn('Firebase erro:',e);setStatus('Erro Firebase','#C0392B');}
 }
