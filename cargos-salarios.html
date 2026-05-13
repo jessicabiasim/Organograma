@@ -1271,18 +1271,14 @@ function calcCustoCliente(clientName, ym) {
 
 // Pega verba do cliente no mês (usa mensal específico ou fixo como fallback)
 function getVerbaCliente(clientId, ym) {
-  // Tenta pelo ID direto
   let v = verbaData[clientId];
-  // Se não achar, tenta pelo nome do cliente (compatibilidade com saves antigos)
   if (!v) {
     const clientName = getClientName(clientId);
-    const fallback = Object.values(verbaData).find(vv => 
+    v = Object.values(verbaData).find(vv =>
       vv.name && clientName && vv.name.toLowerCase() === clientName.toLowerCase()
     );
-    if (fallback) v = fallback;
   }
   if (!v) return 0;
-  if (v.meses && v.meses[ym] != null) return Number(v.meses[ym]);
   return Number(v.verbaFixa || 0);
 }
 
@@ -1429,7 +1425,7 @@ function renderVerba() {
       </td>
       <td style="padding:12px 16px;text-align:right;font-family:'DM Mono',monospace;font-size:13px">
         ${r.verba ? fmt(r.verba) : '<span style="color:var(--text3);font-style:italic;font-family:inherit;font-size:12px">não definida</span>'}
-        ${verbaData[r.cid]?.meses?.[ym] != null ? '<span style="font-size:10px;color:var(--text3);display:block">mensal</span>' : (verbaData[r.cid]?.verbaFixa ? '<span style="font-size:10px;color:var(--text3);display:block">fixo</span>' : '')}
+
       </td>
       <td style="padding:12px 16px;text-align:right;font-family:'DM Mono',monospace;font-size:13px">${r.custo ? fmt(Math.round(r.custo)) : '—'}</td>
       <td style="padding:12px 16px;text-align:right;font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${r.verba?diffColor:'var(--text3)'}">
@@ -1456,17 +1452,18 @@ function changeVerbaMonth(dir) {
 }
 
 function openVerbaModal(cid, clientName) {
-  const ym = currentVerbaMonth;
   const isNew = !cid;
   const realCid = cid ? getVerbaCid(cid) : null;
   const v = realCid ? (verbaData[realCid] || {}) : {};
   const name = clientName || v.name || '';
-  const verbaFixa = v.verbaFixa || '';
-  const verbaMes = v.meses?.[ym] ?? '';
+  const verbaAtual = v.verbaFixa || '';
+  const historico = v.historico || [];
 
-  // Usa modal dedicado para verba
-  const vOverlay = document.getElementById('verba-modal-overlay');
-  vOverlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:1;visibility:visible;transition:opacity 0.2s,visibility 0.2s';
+  const overlay = document.getElementById('verba-modal-overlay');
+  overlay.dataset.cid = realCid || '';
+  overlay.dataset.name = name;
+  overlay.dataset.isNew = isNew ? '1' : '';
+
   document.getElementById('verba-modal-title').textContent = isNew ? 'Cadastrar cliente' : `Verba — ${name}`;
   document.getElementById('verba-modal-body').innerHTML = `
     ${isNew ? `<div class="form-row">
@@ -1474,59 +1471,57 @@ function openVerbaModal(cid, clientName) {
       <input type="text" id="v-name" class="form-input" placeholder="Ex: Helbor">
     </div>` : `<div style="padding:10px 14px;background:var(--surface2);border-radius:var(--radius);margin-bottom:16px;font-weight:600">${name}</div>`}
     <div class="form-row">
-      <label>Verba Fixa Mensal (R$)</label>
-      <input type="number" id="v-fixa" class="form-input" placeholder="Valor padrão" value="${verbaFixa}" step="100">
-      <div style="font-size:11px;color:var(--text3);margin-top:4px">Usado como base quando o mês não tem valor específico.</div>
+      <label>Verba Mensal (R$)</label>
+      <input type="number" id="v-fixa" class="form-input" placeholder="Ex: 52000" value="${verbaAtual}" step="100">
     </div>
-    <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
-      <div class="section-label">Valor específico para ${fmtMonth(ym)}</div>
-      <input type="number" id="v-mes" class="form-input" placeholder="Deixe vazio para usar o valor fixo" value="${verbaMes}" step="100">
-      <div style="font-size:11px;color:var(--text3);margin-top:4px">Preencha apenas se a verba deste mês for diferente do fixo.</div>
-    </div>
+    ${historico.length ? `
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3);margin-bottom:8px">Histórico de alterações</div>
+    <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      ${[...historico].reverse().slice(0,5).map(h=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px">
+          <span style="color:var(--text3);font-family:'DM Mono',monospace;min-width:80px">${fmtDate(h.date)}</span>
+          ${h.old ? `<span style="color:var(--text3);text-decoration:line-through">${fmt(h.old)}</span> → ` : ''}
+          <span style="font-family:'DM Mono',monospace;font-weight:500;color:var(--green)">${fmt(h.value)}</span>
+        </div>`).join('')}
+    </div>` : ''}
   `;
-  // Store state in dataset
-  const overlay = document.getElementById('verba-modal-overlay');
-  overlay.dataset.cid = realCid || '';
-  overlay.dataset.name = name;
-  overlay.dataset.isNew = isNew ? '1' : '';
+
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:1;visibility:visible;transition:opacity 0.2s';
 }
 
 function closeVerbaModal() {
-  document.getElementById('verba-modal-overlay').style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.2s,visibility 0.2s';
+  document.getElementById('verba-modal-overlay').style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;opacity:0;visibility:hidden;pointer-events:none';
 }
 
 function saveVerbaModal() {
   const overlay = document.getElementById('verba-modal-overlay');
   const isNew = !!overlay.dataset.isNew;
-  const name = isNew ? (document.getElementById('v-name')?.value.trim() || '') : overlay.dataset.name;
+  const name = isNew ? (document.getElementById('v-name')?.value.trim()||'') : overlay.dataset.name;
   if (!name) { showToast('Informe o nome do cliente.'); return; }
 
-  const verbaFixa = parseFloat(document.getElementById('v-fixa')?.value) || null;
-  const verbaMesVal = document.getElementById('v-mes')?.value;
-  const mesVal = (verbaMesVal !== '' && verbaMesVal != null) ? parseFloat(verbaMesVal) : null;
-  const ym = currentVerbaMonth;
+  const novoValor = parseFloat(document.getElementById('v-fixa')?.value)||null;
 
-  // Determina a chave correta
+  // Resolve CID
   let cid = overlay.dataset.cid;
-  if (isNew || !cid) {
-    const orgClient = orgData?.clients?.find(c => c.name.toLowerCase() === name.toLowerCase());
-    if (orgClient) cid = orgClient.id;
-    else {
-      const nameKey = name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,16);
-      cid = 'v_' + nameKey;
-    }
+  if (!cid || isNew) {
+    const orgClient = orgData?.clients?.find(c=>c.name.toLowerCase()===name.toLowerCase());
+    cid = orgClient ? orgClient.id : ('v_'+name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,16));
   }
 
-  console.log('saveVerbaModal: cid=', cid, 'name=', name, 'fixa=', verbaFixa, 'mes=', mesVal, 'ym=', ym);
+  if (!verbaData[cid]) verbaData[cid] = { name, verbaFixa: null, historico: [] };
+  if (!verbaData[cid].historico) verbaData[cid].historico = [];
 
-  if (!verbaData[cid]) verbaData[cid] = { name, meses:{} };
+  const valorAnterior = verbaData[cid].verbaFixa;
+  // Só adiciona ao histórico se o valor mudou
+  if (novoValor !== valorAnterior) {
+    verbaData[cid].historico.push({
+      date: new Date().toISOString().slice(0,10),
+      value: novoValor,
+      old: valorAnterior
+    });
+  }
   verbaData[cid].name = name;
-  verbaData[cid].verbaFixa = verbaFixa;
-  if (!verbaData[cid].meses) verbaData[cid].meses = {};
-  if (mesVal !== null) verbaData[cid].meses[ym] = mesVal;
-  else delete verbaData[cid].meses[ym];
-
-  console.log('verbaData após update:', JSON.stringify(verbaData[cid]));
+  verbaData[cid].verbaFixa = novoValor;
 
   masterSave();
   closeVerbaModal();
