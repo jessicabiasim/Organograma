@@ -1826,8 +1826,11 @@ function initFirebase(callback) {
           const d=snap.val();
           if(d&&d._version==='sal_v1'){
             salData=d.salData||{};
+            inativosData=d.inativosData||{};
+            verbaData=d.verbaData||{};
             if(d.skillsDB) Object.assign(SKILLS_DB, d.skillsDB);
             renderCurrentTab();
+            checkRemovedPeople();
           }
         }, err=>{
           console.warn('Erro lendo salarios:',err);
