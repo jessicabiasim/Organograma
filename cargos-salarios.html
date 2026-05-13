@@ -457,15 +457,20 @@ const SKILLS_DB = {
 function detectArea(roleName) {
   const n = (roleName||'').toLowerCase();
   if (n.includes('motion')) return 'Motion';
-  if (n.includes('mídia') || n.includes('midia') || n.includes('tráfego') || n.includes('trafego')) return 'Mídia';
-  if (n.includes('atendimento') || n.includes('contas')) return 'Atendimento';
-  if (n.includes('redator') || n.includes('redatora') || n.includes('redação')) {
+  if (n.includes('mídia') || n.includes('midia') || n.includes('tráfego') || n.includes('trafego') || n.includes('trafico')) return 'Mídia';
+  if (n.includes('atendimento') || n.includes('contas') || n.includes('diretora de contas') || n.includes('diretor de contas')) return 'Atendimento';
+  if (n.includes('redator') || n.includes('redatora') || n.includes('redação') || n.includes('redacao')) {
     if (n.includes('social') || n.includes('conteúdo') || n.includes('conteudo')) return 'Redação Social';
     return 'Redação';
   }
   if (n.includes('social') || n.includes('listening')) return 'Listening';
-  if (n.includes('da ') || n.includes(' da') || n.includes('arte') || n.includes('criação') || n.includes('criativa') || n.includes('criativo')) return 'Direção de Arte';
-  if (n.includes('produção') || n.includes('producao') || n.includes('gp')) return 'Produção';
+  if (n.includes('da ') || n.includes(' da') || n.endsWith(' da') || n.includes('arte final') || n.includes('arte') || n.includes('criação') || n.includes('criativa') || n.includes('criativo') || n.includes('diretor de criação') || n.includes('diretora de criação') || n.includes('diretor criativo') || n.includes('diretora criativa')) return 'Direção de Arte';
+  if (n.includes('produção') || n.includes('producao') || n.includes(' gp') || n.startsWith('gp')) return 'Produção';
+  if (n.includes('motion')) return 'Motion';
+  // Cargos que não têm área de skills mas devem ter categoria própria no dashboard
+  if (n.includes('bi') || n.includes('business intelligence') || n.includes('dados')) return 'BI';
+  if (n.includes('financeiro') || n.includes('financeira') || n.includes('finance')) return 'Financeiro';
+  if (n.includes('head') || n.includes('diretor') || n.includes('diretora') || n.includes('operações') || n.includes('operacoes') || n.includes('novos negócios') || n.includes('novos negocios')) return 'Diretoria';
   return null;
 }
 
