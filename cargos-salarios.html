@@ -244,6 +244,9 @@
   .total-val.green { color: var(--green); }
   .total-val.blue { color: var(--blue); }
 
+  .row-inativo td { opacity: 0.45; }
+  .row-inativo:hover td { opacity: 0.7; }
+  .badge-inativo { background: #F0EEE9; color: #9B9890; font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 500; margin-left: 5px; }
   .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
   #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--accent); color: var(--accent-fg); padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.3s, transform 0.3s; z-index: 999; pointer-events: none; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -322,6 +325,14 @@
       </button>
       <div class="ms-dropdown" id="ms-nivel-dd"></div>
     </div>
+    <div class="ms-wrap" id="ms-status-wrap">
+      <button class="ms-btn" id="ms-status-btn" onclick="toggleMs('status')">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+        <span id="ms-status-label">Status</span>
+        <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="ms-dropdown" id="ms-status-dd"></div>
+    </div>
     <div class="toolbar-sep"></div>
     <div class="summary-chips" id="summary-chips"></div>
   </div>
@@ -349,6 +360,22 @@
   </div>
 </div>
 <div id="toast"></div>
+
+<!-- MODAL INATIVOS -->
+<div id="inativos-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:300;opacity:0;visibility:hidden;transition:opacity 0.2s,visibility 0.2s">
+  <div style="background:var(--surface);border-radius:var(--radius-lg);padding:28px;width:480px;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-lg)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <span style="font-size:20px">⚠️</span>
+      <h3 style="font-size:16px;font-weight:600">Pessoas removidas do organograma</h3>
+    </div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:20px">As pessoas abaixo tinham dados cadastrados mas não estão mais no organograma. Deseja marcá-las como inativas? Os dados serão preservados.</p>
+    <div id="inativos-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:16px;border-top:1px solid var(--border)">
+      <button class="btn-secondary" onclick="closeInativos()">Ignorar por agora</button>
+      <button class="btn-save" onclick="confirmarInativos()">Marcar selecionados como inativos</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── SENHA ────────────────────────────────────────────────
@@ -464,9 +491,12 @@ const AREA_LEVELS = {
 // ── ESTADO ───────────────────────────────────────────────
 let orgData = null;
 let salData = {};
+let inativosData = {};   // { [personId]: { name, role, inativeDate } }
 let currentTab = 'pessoas';
 let currentEditId = null;
 let currentSkillsArea = 'Atendimento';
+let showInativos = false;
+let pendingInativos = []; // pessoas removidas do org aguardando decisão
 
 // ── SENHA ────────────────────────────────────────────────
 function checkPassword() {
@@ -569,7 +599,55 @@ function renderPessoas() {
   if (!orgData) { document.getElementById('tab-pessoas').innerHTML = '<div class="empty-state"><p>Carregando dados do organograma...</p></div>'; return; }
   const q = (document.getElementById('search-input').value||'').toLowerCase();
 
-  const people = orgData.people.filter(p => {
+  // Deduplica por nome — mantém primeiro registro de cada nome
+  const seenNames = new Set();
+  const uniquePeople = orgData.people.filter(p => {
+    if (seenNames.has(p.name)) return false;
+    seenNames.add(p.name); return true;
+  });
+
+  if (showInativos) {
+    // Mostra inativos
+    const inativos = Object.entries(inativosData).filter(([,v])=>v.inativo).map(([id,v])=>({
+      id, name:v.name, role:v.roleId, _inativo:true
+    })).filter(p => {
+      if (q && !p.name.toLowerCase().includes(q)) return false;
+      return true;
+    }).sort((a,b)=>a.name.localeCompare(b.name));
+
+    updateSummary(uniquePeople, inativos);
+
+    if (!inativos.length) {
+      document.getElementById('tab-pessoas').innerHTML = '<div class="empty-state"><p>Nenhuma pessoa inativa.</p></div>';
+      return;
+    }
+
+    let html = '<div class="table-wrap"><table><thead><tr><th>Pessoa</th><th>Cargo</th><th>Nível</th><th>Salário Atual</th><th>Inativo desde</th><th></th></tr></thead><tbody>';
+    inativos.forEach(p => {
+      const iv = inativosData[p.id];
+      const sd = salData[p.id]||{};
+      const roleName = iv.roleName||'—';
+      html += `<tr class="row-inativo">
+        <td class="td-name"><div style="display:flex;align-items:center;gap:10px">
+          <div class="person-avatar" style="width:28px;height:28px;font-size:11px">${initials(p.name)}</div>
+          ${p.name} <span class="badge-inativo">Inativo</span>
+        </div></td>
+        <td style="color:var(--text2)">${roleName}</td>
+        <td>${sd.level?`<span class="level-badge ${lvClass(sd.level)}">${sd.level}</span>`:'—'}</td>
+        <td class="${!sd.salary?'td-empty':'td-mono'}">${sd.salary?fmt(sd.salary):'não cadastrado'}</td>
+        <td style="font-size:12px;color:var(--text3)">${iv.inativoDate?fmtDate(iv.inativoDate):'—'}</td>
+        <td style="text-align:right">
+          <button class="btn-edit" onclick="reativar('${p.id}')" style="color:var(--green)">Reativar</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+    document.getElementById('tab-pessoas').innerHTML = html;
+    return;
+  }
+
+  const people = uniquePeople.filter(p => {
+    if (inativosData[p.id]?.inativo) return false; // oculta inativos da lista ativa
     const role = orgData.roles.find(r=>r.id===p.role);
     const rn = role?.name||'';
     if (q && !p.name.toLowerCase().includes(q) && !rn.toLowerCase().includes(q)) return false;
@@ -578,7 +656,7 @@ function renderPessoas() {
     return true;
   }).sort((a,b)=>a.name.localeCompare(b.name));
 
-  updateSummary(orgData.people, people);
+  updateSummary(uniquePeople, people);
 
   let html = '<div class="table-wrap"><table><thead><tr><th>Pessoa</th><th>Cargo</th><th>Nível</th><th>Salário Atual</th><th>Faixa de Referência</th><th>Último Reajuste</th><th></th></tr></thead><tbody>';
 
@@ -690,13 +768,30 @@ const ALL_NIVEIS = ['Assistente','Júnior','Pleno','Sênior','Líder','Diretor']
 
 function toggleMs(type) {
   const dd = document.getElementById('ms-'+type+'-dd');
-  const other = type==='cargo' ? 'nivel' : 'cargo';
-  document.getElementById('ms-'+other+'-dd').classList.remove('open');
+  ['cargo','nivel','status'].filter(t=>t!==type).forEach(t=>{
+    const el = document.getElementById('ms-'+t+'-dd');
+    if(el) el.classList.remove('open');
+  });
   dd.classList.toggle('open');
   if (dd.classList.contains('open')) {
     if (type==='cargo') buildCargoDd();
-    else buildNivelDd();
+    else if (type==='nivel') buildNivelDd();
+    else buildStatusDd();
   }
+}
+
+function buildStatusDd() {
+  const dd = document.getElementById('ms-status-dd');
+  dd.innerHTML = `
+    <label class="ms-option"><input type="checkbox" ${!showInativos?'checked':''} onchange="setStatusFilter('ativos',this.checked)"><span>✓ Ativos</span></label>
+    <label class="ms-option"><input type="checkbox" ${showInativos?'checked':''} onchange="setStatusFilter('inativos',this.checked)"><span>🔴 Inativos</span></label>
+  `;
+}
+function setStatusFilter(tipo, checked) {
+  showInativos = tipo==='inativos' && checked;
+  updateMsBtn('status');
+  document.getElementById('ms-status-dd').classList.remove('open');
+  renderCurrentTab();
 }
 document.addEventListener('click', e => {
   if (!e.target.closest('.ms-wrap')) {
@@ -739,9 +834,15 @@ function clearFilter(type) {
   renderCurrentTab();
 }
 function updateMsBtn(type) {
-  const set = type==='cargo' ? filterCargos : filterNiveis;
   const btn = document.getElementById('ms-'+type+'-btn');
   const lbl = document.getElementById('ms-'+type+'-label');
+  if (!btn||!lbl) return;
+  if (type==='status') {
+    if (showInativos) { btn.classList.add('has-filter'); lbl.textContent='Inativos'; }
+    else { btn.classList.remove('has-filter'); lbl.textContent='Status'; }
+    return;
+  }
+  const set = type==='cargo' ? filterCargos : filterNiveis;
   if (set.size === 0) {
     btn.classList.remove('has-filter');
     lbl.textContent = type==='cargo' ? 'Cargo' : 'Nível';
@@ -882,7 +983,7 @@ function addArea() {
 }
 function saveSkills() {
   if (window._fbSalSet) {
-    window._fbSalSet({ salData, skillsDB: SKILLS_DB, _version:'sal_v1' });
+    window._fbSalSet({ salData, skillsDB: SKILLS_DB, inativosData, _version:'sal_v1' });
   }
 }
 
@@ -1150,6 +1251,74 @@ function updatePreview(personId) {
 
 function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); currentEditId=null; }
 
+// ── INATIVOS ──────────────────────────────────────────────
+function checkRemovedPeople() {
+  if (!orgData || !salData) return;
+  const orgNames = new Set(orgData.people.map(p=>p.name));
+  const removed = [];
+  // Verifica quem tem salData mas não está mais no organograma e não está já inativo
+  Object.entries(salData).forEach(([id, sd]) => {
+    if (!sd.salary) return; // sem salário cadastrado, ignora
+    const inOrg = orgData.people.find(p=>p.id===id);
+    const alreadyInativo = inativosData[id]?.inativo;
+    if (!inOrg && !alreadyInativo) {
+      // Tenta achar o nome pelo inativosData ou pelo histórico
+      const name = inativosData[id]?.name || id;
+      removed.push({ id, name, sd });
+    }
+  });
+  if (removed.length) showInativosModal(removed);
+}
+
+function showInativosModal(removed) {
+  pendingInativos = removed;
+  const list = document.getElementById('inativos-list');
+  list.innerHTML = removed.map(r => `
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius);cursor:pointer">
+      <input type="checkbox" checked data-id="${r.id}" style="accent-color:var(--blue);width:15px;height:15px">
+      <div>
+        <div style="font-weight:600;font-size:13px">${r.name}</div>
+        <div style="font-size:11px;color:var(--text3)">Último salário: ${fmt(r.sd.salary)||'—'}</div>
+      </div>
+    </label>`).join('');
+  const ov = document.getElementById('inativos-overlay');
+  ov.style.opacity='1'; ov.style.visibility='visible';
+}
+
+function closeInativos() {
+  const ov = document.getElementById('inativos-overlay');
+  ov.style.opacity='0'; ov.style.visibility='hidden';
+}
+
+function confirmarInativos() {
+  const checks = document.querySelectorAll('#inativos-list input[type=checkbox]:checked');
+  checks.forEach(cb => {
+    const id = cb.dataset.id;
+    const person = pendingInativos.find(p=>p.id===id);
+    if (!person) return;
+    if (!inativosData[id]) inativosData[id] = {};
+    inativosData[id].inativo = true;
+    inativosData[id].inativoDate = new Date().toISOString().slice(0,10);
+    inativosData[id].name = person.name;
+  });
+  saveInativos();
+  closeInativos();
+  showToast('Pessoas marcadas como inativas.');
+  renderCurrentTab();
+}
+
+function reativar(id) {
+  if (!confirm('Reativar esta pessoa? Ela voltará a aparecer na lista de ativos.')) return;
+  if (inativosData[id]) { inativosData[id].inativo = false; }
+  saveInativos();
+  showToast('Pessoa reativada!');
+  renderCurrentTab();
+}
+
+function saveInativos() {
+  if (window._fbSalSet) window._fbSalSet({ salData, skillsDB: SKILLS_DB, inativosData, _version:'sal_v1' });
+}
+
 function deleteHistory(personId, index) {
   if (!confirm('Excluir este reajuste do histórico?')) return;
   const sd = salData[personId]; if (!sd||!sd.history) return;
@@ -1219,7 +1388,7 @@ function setStatus(msg,color) {
   el.style.opacity=msg?'1':'0';
   if(msg) setTimeout(()=>{if(el.textContent===msg)el.style.opacity='0';},3000);
 }
-function saveSalarios() { if(window._fbSalSet) window._fbSalSet({salData, skillsDB:SKILLS_DB, _version:'sal_v1'}); }
+function saveSalarios() { if(window._fbSalSet) window._fbSalSet({salData, skillsDB:SKILLS_DB, inativosData, _version:'sal_v1'}); }
 function loadFirebase(callback) {
   const s1=document.createElement('script');
   s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
