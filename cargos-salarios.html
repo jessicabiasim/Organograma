@@ -154,9 +154,9 @@
   .h-info { flex: 1; }
   .h-name { font-weight: 500; font-size: 13px; }
   .h-detail { font-size: 12px; color: var(--text2); margin-top: 2px; }
-  .h-val { font-family: 'DM Mono', monospace; font-size: 13px; text-align: right; }
-  .h-old { color: var(--text3); text-decoration: line-through; font-size: 11px; }
-  .h-new { color: var(--green); }
+  .h-val { font-family: 'DM Mono', monospace; font-size: 13px; text-align: right; min-width: 100px; }
+  .h-old { color: var(--text3); text-decoration: line-through; font-size: 11px; display: block; }
+  .h-new { color: var(--green); font-weight: 600; display: block; }
   .h-date { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: 12px; }
   .btn-del-hist { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 14px; padding: 2px 6px; border-radius: 4px; line-height: 1; transition: color 0.1s, background 0.1s; }
   .btn-del-hist:hover { color: var(--red); background: var(--red-light); }
@@ -247,6 +247,25 @@
   .row-inativo td { opacity: 0.45; }
   .row-inativo:hover td { opacity: 0.7; }
   .badge-inativo { background: #F0EEE9; color: #9B9890; font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 500; margin-left: 5px; }
+  /* VERBA & EQUIPE */
+  .verba-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+  .verba-header h2 { font-size:15px; font-weight:600; }
+  .verba-kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+  .verba-table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow); margin-bottom:24px; }
+  .verba-section-title { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text3); margin-bottom:12px; }
+  .status-pill { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; }
+  .status-ok   { background:var(--green-light); color:var(--green); }
+  .status-low  { background:var(--red-light); color:var(--red); }
+  .status-high { background:var(--blue-light); color:var(--blue); }
+  .verba-month-nav { display:flex; align-items:center; gap:10px; }
+  .btn-month { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:5px 10px; cursor:pointer; font-size:13px; }
+  .btn-month:hover { background:var(--border); }
+  .month-label { font-size:14px; font-weight:600; min-width:120px; text-align:center; }
+  .pessoas-list-mini { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .pessoa-chip { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; background:var(--surface2); border-radius:20px; font-size:11px; color:var(--text2); }
+  .btn-add-verba { background:var(--accent); color:var(--accent-fg); border:none; border-radius:var(--radius); padding:8px 16px; font-family:"DM Sans",sans-serif; font-size:13px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:6px; }
+  .btn-add-verba:hover { opacity:0.85; }
+
   .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
   #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--accent); color: var(--accent-fg); padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.3s, transform 0.3s; z-index: 999; pointer-events: none; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -302,6 +321,7 @@
     <button class="tab-btn" onclick="switchTab('historico',this)">Histórico de Reajustes</button>
     <button class="tab-btn" onclick="switchTab('skills',this)">Skills por Área</button>
     <button class="tab-btn" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('verba',this)">💰 Verba & Equipe</button>
   </div>
 
   <div class="toolbar" id="toolbar-main">
@@ -343,6 +363,7 @@
     <div id="tab-historico" style="display:none"></div>
     <div id="tab-skills" style="display:none"></div>
     <div id="tab-dashboard" style="display:none"></div>
+    <div id="tab-verba" style="display:none"></div>
   </div>
 </div>
 
@@ -497,6 +518,8 @@ let currentEditId = null;
 let currentSkillsArea = 'Atendimento';
 let showInativos = false;
 let pendingInativos = []; // pessoas removidas do org aguardando decisão
+let verbaData = {};   // { [clientId]: { name, verbaMensal, verbaFixa, meses:{} } }
+let currentVerbaMonth = '';  // 'YYYY-MM'
 
 // ── SENHA ────────────────────────────────────────────────
 function checkPassword() {
@@ -562,10 +585,10 @@ function switchTab(name, el) {
   currentTab = name;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  ['pessoas','historico','skills','dashboard'].forEach(t => {
+  ['pessoas','historico','skills','dashboard','verba'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t===name ? '' : 'none';
   });
-  const noToolbar = name==='skills' || name==='dashboard';
+  const noToolbar = name==='skills' || name==='dashboard' || name==='verba';
   document.getElementById('toolbar-main').style.display = noToolbar ? 'none' : '';
   const totaisBar = document.getElementById('totais-bar');
   totaisBar.style.display = name==='pessoas' ? '' : 'none';
@@ -575,7 +598,8 @@ function renderCurrentTab() {
   if (currentTab==='pessoas') renderPessoas();
   else if (currentTab==='historico') renderHistorico();
   else if (currentTab==='skills') renderSkills();
-  else renderDashboard();
+  else if (currentTab==='dashboard') renderDashboard();
+  else if (currentTab==='verba') renderVerba();
 }
 
 // ── HELPERS ──────────────────────────────────────────────
@@ -658,7 +682,7 @@ function renderPessoas() {
 
   updateSummary(uniquePeople, people);
 
-  let html = '<div class="table-wrap"><table><thead><tr><th>Pessoa</th><th>Cargo</th><th>Nível</th><th>Salário Atual</th><th>Faixa de Referência</th><th>Último Reajuste</th><th></th></tr></thead><tbody>';
+  let html = '<div class="table-wrap"><table><thead><tr><th>Pessoa</th><th>Cargo</th><th>Nível</th><th>Contratação</th><th>Salário Atual</th><th>Faixa de Referência</th><th>Último Reajuste</th><th></th></tr></thead><tbody>';
 
   if (!people.length) {
     html += '<tr><td colspan="7"><div class="empty-state"><p>Nenhuma pessoa encontrada.</p></div></td></tr>';
@@ -698,11 +722,14 @@ function renderPessoas() {
       faixaHtml = `<span style="color:var(--text3);font-size:11px">sem faixa para ${level}</span>`;
     }
 
+    // Data de contratação do organograma
+    const hireDate = p.date || '';
     html += `<tr>
       <td class="td-name"><div style="display:flex;align-items:center;gap:10px">
         ${avatarHtml(p, 28)}${p.name}
       </div></td>
       <td style="color:var(--text2)">${rn}</td>
+      <td style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace">${hireDate ? fmtDate(hireDate) : '—'}</td>
       <td>${(() => {
         const role2 = orgData.roles.find(r=>r.id===p.role);
         const displayLevel = level || detectLevel(role2?.name);
@@ -983,7 +1010,7 @@ function addArea() {
 }
 function saveSkills() {
   if (window._fbSalSet) {
-    window._fbSalSet({ salData, skillsDB: SKILLS_DB, inativosData, _version:'sal_v1' });
+    window._fbSalSet({ salData, skillsDB: SKILLS_DB, inativosData, verbaData, _version:'sal_v1' });
   }
 }
 
@@ -1164,6 +1191,265 @@ function renderDashboard() {
   html += '</div>'; // dash-grid
 
   document.getElementById('tab-dashboard').innerHTML = html;
+}
+
+
+// ── VERBA & EQUIPE ───────────────────────────────────────
+
+function getYearMonth(d) {
+  if (!d) d = new Date();
+  return d.toISOString().slice(0,7);
+}
+function fmtMonth(ym) {
+  if (!ym) return '';
+  const [y,m] = ym.split('-');
+  const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return months[parseInt(m)-1] + ' ' + y;
+}
+function prevMonth(ym) {
+  const [y,m] = ym.split('-').map(Number);
+  const d = new Date(y, m-2, 1);
+  return getYearMonth(d);
+}
+function nextMonth(ym) {
+  const [y,m] = ym.split('-').map(Number);
+  const d = new Date(y, m, 1);
+  return getYearMonth(d);
+}
+
+// Calcula custo de equipe por cliente no mês
+function calcCustoCliente(clientName, ym) {
+  if (!orgData) return 0;
+  let total = 0;
+  // Conta quantos clientes cada pessoa tem (para divisão igual)
+  const personClientCount = {};
+  orgData.people.forEach(p => {
+    const clientsOfPerson = [...new Set(orgData.people.filter(pp => pp.name===p.name).map(pp => pp.client).filter(Boolean))];
+    personClientCount[p.name] = clientsOfPerson.length || 1;
+  });
+
+  // Pessoas únicas por cliente
+  const seenForClient = new Set();
+  orgData.people.forEach(p => {
+    if ((p.client||'').toLowerCase() !== clientName.toLowerCase()) return;
+    if (seenForClient.has(p.name)) return;
+    seenForClient.add(p.name);
+    const sd = Object.values(salData).find ? 
+      Object.entries(salData).find(([id]) => orgData.people.find(pp=>pp.id===id&&pp.name===p.name))?.[1] : null;
+    // Find salary by person name
+    const personIds = orgData.people.filter(pp=>pp.name===p.name).map(pp=>pp.id);
+    let salary = 0;
+    for (const id of personIds) { if (salData[id]?.salary) { salary = salData[id].salary; break; } }
+    const nClients = personClientCount[p.name] || 1;
+    total += salary / nClients;
+  });
+  return total;
+}
+
+// Pega verba do cliente no mês (usa mensal específico ou fixo como fallback)
+function getVerbaCliente(clientId, ym) {
+  const v = verbaData[clientId];
+  if (!v) return 0;
+  if (v.meses && v.meses[ym] != null) return Number(v.meses[ym]);
+  return Number(v.verbaFixa || 0);
+}
+
+function saveVerba() {
+  if (window._fbSalSet) window._fbSalSet({salData, skillsDB:SKILLS_DB, inativosData, verbaData, _version:'sal_v1'});
+}
+
+function renderVerba() {
+  if (!currentVerbaMonth) currentVerbaMonth = getYearMonth();
+  const ym = currentVerbaMonth;
+
+  // Pega clientes do organograma
+  const orgClients = orgData ? [...new Set(orgData.people.map(p=>p.client).filter(Boolean))].sort() : [];
+
+  // Merge com clientes em verbaData (pode ter clientes adicionados manualmente)
+  const allClientNames = new Set([...orgClients, ...Object.values(verbaData).map(v=>v.name)]);
+  const clients = [...allClientNames].sort();
+
+  let totalVerba = 0, totalCusto = 0;
+  const rows = clients.map(name => {
+    const cid = Object.keys(verbaData).find(k=>verbaData[k].name===name) || btoa(name).replace(/=/g,'');
+    const verba = getVerbaCliente(cid, ym);
+    const custo = calcCustoCliente(name, ym);
+    const diff = verba - custo;
+    totalVerba += verba;
+    totalCusto += custo;
+
+    // Pessoas alocadas neste cliente
+    const pessoas = orgData ? [...new Set(orgData.people.filter(p=>p.client===name).map(p=>p.name))] : [];
+    const nPessoas = pessoas.length;
+
+    let statusHtml = '<span style="color:var(--text3);font-size:11px">sem verba</span>';
+    if (verba > 0) {
+      if (Math.abs(diff) < verba * 0.05) statusHtml = `<span class="status-pill status-ok">✓ OK</span>`;
+      else if (diff < 0) statusHtml = `<span class="status-pill status-low">↓ Faltando ${fmt(Math.abs(diff))}</span>`;
+      else statusHtml = `<span class="status-pill status-high">↑ Sobra ${fmt(diff)}</span>`;
+    }
+
+    return { cid, name, verba, custo, diff, nPessoas, pessoas, statusHtml };
+  });
+
+  const totalDiff = totalVerba - totalCusto;
+  let totalStatus = '';
+  if (totalVerba > 0) {
+    if (Math.abs(totalDiff) < totalVerba * 0.05) totalStatus = `<span class="status-pill status-ok">✓ Equilibrado</span>`;
+    else if (totalDiff < 0) totalStatus = `<span class="status-pill status-low">↓ Déficit de ${fmt(Math.abs(totalDiff))}</span>`;
+    else totalStatus = `<span class="status-pill status-high">↑ Superávit de ${fmt(totalDiff)}</span>`;
+  }
+
+  let html = `
+  <div class="verba-header">
+    <div>
+      <h2>Verba & Equipe</h2>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px">Compare a verba recebida por cliente com o custo de equipe alocada</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="verba-month-nav">
+        <button class="btn-month" onclick="changeVerbaMonth(-1)">‹</button>
+        <span class="month-label">${fmtMonth(ym)}</span>
+        <button class="btn-month" onclick="changeVerbaMonth(1)">›</button>
+      </div>
+      <button class="btn-add-verba" onclick="openVerbaModal()">+ Cadastrar cliente</button>
+    </div>
+  </div>
+
+  <div class="verba-kpi-grid">
+    <div class="kpi-card green">
+      <div class="kpi-label">Total Verba</div>
+      <div class="kpi-value" style="font-size:18px">${fmt(totalVerba)||'R$ 0'}</div>
+      <div class="kpi-sub">Soma de todos os clientes</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Custo de Equipe</div>
+      <div class="kpi-value" style="font-size:18px">${fmt(totalCusto)||'R$ 0'}</div>
+      <div class="kpi-sub">Salários proporcionais</div>
+    </div>
+    <div class="kpi-card ${totalDiff >= 0 ? '' : 'red'}" style="${totalDiff < 0 ? 'border-color:var(--red)' : ''}">
+      <div class="kpi-label">Diferença</div>
+      <div class="kpi-value" style="font-size:18px;color:${totalDiff >= 0 ? 'var(--green)' : 'var(--red)'}">${totalVerba > 0 ? fmt(Math.abs(totalDiff)) : '—'}</div>
+      <div class="kpi-sub">${totalDiff >= 0 ? 'Sobrando' : 'Faltando'}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Status Geral</div>
+      <div class="kpi-value" style="font-size:14px;margin-top:4px">${totalStatus||'—'}</div>
+      <div class="kpi-sub">${clients.length} clientes</div>
+    </div>
+  </div>
+
+  <div class="verba-table-wrap">
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="background:var(--surface2)">
+          <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3);border-bottom:1px solid var(--border)">Cliente</th>
+          <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3);border-bottom:1px solid var(--border)">Equipe</th>
+          <th style="padding:10px 16px;text-align:right;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3);border-bottom:1px solid var(--border)">Verba ${fmtMonth(ym)}</th>
+          <th style="padding:10px 16px;text-align:right;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3);border-bottom:1px solid var(--border)">Custo Equipe</th>
+          <th style="padding:10px 16px;text-align:right;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3);border-bottom:1px solid var(--border)">Diferença</th>
+          <th style="padding:10px 16px;text-align:center;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3);border-bottom:1px solid var(--border)">Status</th>
+          <th style="border-bottom:1px solid var(--border)"></th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  rows.forEach(r => {
+    const diffColor = r.diff >= 0 ? 'var(--green)' : 'var(--red)';
+    html += `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:12px 16px;font-weight:500;font-size:13px">${r.name}</td>
+      <td style="padding:12px 16px">
+        <div style="font-size:12px;color:var(--text2)">${r.nPessoas} pessoa${r.nPessoas!==1?'s':''}</div>
+        <div class="pessoas-list-mini">${r.pessoas.slice(0,3).map(n=>`<span class="pessoa-chip">${n.split(' ')[0]}</span>`).join('')}${r.pessoas.length>3?`<span class="pessoa-chip">+${r.pessoas.length-3}</span>`:''}</div>
+      </td>
+      <td style="padding:12px 16px;text-align:right;font-family:'DM Mono',monospace;font-size:13px">
+        ${r.verba ? fmt(r.verba) : '<span style="color:var(--text3);font-style:italic;font-family:inherit;font-size:12px">não definida</span>'}
+        ${verbaData[r.cid]?.meses?.[ym] != null ? '<span style="font-size:10px;color:var(--text3);display:block">mensal</span>' : (verbaData[r.cid]?.verbaFixa ? '<span style="font-size:10px;color:var(--text3);display:block">fixo</span>' : '')}
+      </td>
+      <td style="padding:12px 16px;text-align:right;font-family:'DM Mono',monospace;font-size:13px">${r.custo ? fmt(Math.round(r.custo)) : '—'}</td>
+      <td style="padding:12px 16px;text-align:right;font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${r.verba?diffColor:'var(--text3)'}">
+        ${r.verba && r.custo ? (r.diff >= 0 ? '+' : '') + fmt(Math.round(r.diff)) : '—'}
+      </td>
+      <td style="padding:12px 16px;text-align:center">${r.statusHtml}</td>
+      <td style="padding:12px 16px;text-align:right">
+        <button class="btn-edit" onclick="openVerbaModal('${r.cid}','${r.name}')">Editar verba</button>
+      </td>
+    </tr>`;
+  });
+
+  if (!rows.length) {
+    html += `<tr><td colspan="7"><div class="empty-state"><p>Nenhum cliente encontrado no organograma.<br><small>Adicione clientes pelo organograma ou cadastre manualmente.</small></p></div></td></tr>`;
+  }
+
+  html += '</tbody></table></div>';
+  document.getElementById('tab-verba').innerHTML = html;
+}
+
+function changeVerbaMonth(dir) {
+  currentVerbaMonth = dir < 0 ? prevMonth(currentVerbaMonth) : nextMonth(currentVerbaMonth);
+  renderVerba();
+}
+
+function openVerbaModal(cid, clientName) {
+  const ym = currentVerbaMonth;
+  const isNew = !cid;
+  const v = cid ? (verbaData[cid] || {}) : {};
+  const name = clientName || v.name || '';
+  const verbaFixa = v.verbaFixa || '';
+  const verbaMes = v.meses?.[ym] ?? '';
+
+  document.getElementById('modal-title').textContent = isNew ? 'Cadastrar cliente' : `Verba — ${name}`;
+  document.getElementById('modal-body').innerHTML = `
+    ${isNew ? `<div class="form-row">
+      <label>Nome do cliente</label>
+      <input type="text" id="v-name" class="form-input" placeholder="Ex: Helbor">
+    </div>` : `<div style="padding:10px 14px;background:var(--surface2);border-radius:var(--radius);margin-bottom:16px;font-weight:600">${name}</div>`}
+
+    <div class="form-row">
+      <label>Verba Fixa Mensal (R$)</label>
+      <input type="number" id="v-fixa" class="form-input" placeholder="Valor padrão quando não há variação" value="${verbaFixa}" step="100">
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Usado como base quando o mês não tem valor específico.</div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
+      <div class="section-label">Valor específico para ${fmtMonth(ym)}</div>
+      <input type="number" id="v-mes" class="form-input" placeholder="Deixe vazio para usar o valor fixo" value="${verbaMes}" step="100">
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Preencha apenas se a verba deste mês for diferente do fixo.</div>
+    </div>
+  `;
+
+  currentEditId = cid || ('new_' + Date.now());
+  window._verbaEditName = name;
+  window._verbaIsNew = isNew;
+  document.getElementById('modal-overlay').classList.add('open');
+  // Override save button
+  document.querySelector('.btn-save').onclick = saveVerbaModal;
+}
+
+function saveVerbaModal() {
+  const isNew = window._verbaIsNew;
+  const name = isNew ? document.getElementById('v-name')?.value.trim() : window._verbaEditName;
+  if (!name) { showToast('Informe o nome do cliente.'); return; }
+  const verbaFixa = parseFloat(document.getElementById('v-fixa').value) || null;
+  const verbaMes = document.getElementById('v-mes').value;
+  const mesVal = verbaMes !== '' ? parseFloat(verbaMes) : null;
+  const ym = currentVerbaMonth;
+
+  const cid = window._verbaIsNew ? ('c_' + name.toLowerCase().replace(/\s+/g,'_') + '_' + Date.now()) : currentEditId;
+  if (!verbaData[cid]) verbaData[cid] = { name, meses:{} };
+  verbaData[cid].name = name;
+  verbaData[cid].verbaFixa = verbaFixa;
+  if (!verbaData[cid].meses) verbaData[cid].meses = {};
+  if (mesVal !== null) verbaData[cid].meses[ym] = mesVal;
+  else delete verbaData[cid].meses[ym];
+
+  saveVerba();
+  closeModal();
+  // Restore original save button
+  document.querySelector('.btn-save').onclick = saveModal;
+  renderVerba();
+  showToast('Verba salva!');
 }
 
 // ── MODAL ─────────────────────────────────────────────────
@@ -1388,7 +1674,7 @@ function setStatus(msg,color) {
   el.style.opacity=msg?'1':'0';
   if(msg) setTimeout(()=>{if(el.textContent===msg)el.style.opacity='0';},3000);
 }
-function saveSalarios() { if(window._fbSalSet) window._fbSalSet({salData, skillsDB:SKILLS_DB, inativosData, _version:'sal_v1'}); }
+function saveSalarios() { if(window._fbSalSet) window._fbSalSet({salData, skillsDB:SKILLS_DB, inativosData, verbaData, _version:'sal_v1'}); }
 function loadFirebase(callback) {
   const s1=document.createElement('script');
   s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
