@@ -1072,7 +1072,13 @@ function updateSummary(allPeople, filteredPeople) {
 function renderDashboard() {
   if (!orgData) { document.getElementById('tab-dashboard').innerHTML='<div class="empty-state"><p>Carregando...</p></div>'; return; }
 
-  const people = orgData.people;
+  // Deduplica por nome (igual à aba Por Pessoa)
+  const _seenDash = new Set();
+  const people = orgData.people.filter(p => {
+    if (inativosData[p.id]?.inativo) return false;
+    if (_seenDash.has(p.name)) return false;
+    _seenDash.add(p.name); return true;
+  });
   const LEVEL_COLORS = {
     'Assistente':'#9B9890','Júnior':'#2B5BE0','Pleno':'#1A7A4A',
     'Sênior':'#B45309','Líder':'#7C3AED','Diretor':'#1A1916','':'#E2DED6'
@@ -1211,6 +1217,7 @@ function renderDashboard() {
     if(seenNamesD.has(p.name)) return false;
     seenNamesD.add(p.name); return true;
   }).reduce((s,p)=>s+(salData[p.id]?.salary||0),0);
+  const countPeopleD = seenNamesD.size;
 
   if (totalVerbaD > 0 || folhaTotalD > 0) {
     const maxVal = Math.max(totalVerbaD, folhaTotalD) || 1;
