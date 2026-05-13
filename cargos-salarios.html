@@ -1203,6 +1203,40 @@ function renderDashboard() {
   });
 
   html += `</div></div></div>`;
+  // ── GRÁFICO 3: Verba vs Folha ──
+  const totalVerbaD = Object.values(verbaData).reduce((s,v)=>s+(v.verbaFixa||0),0);
+  const seenNamesD = new Set();
+  const folhaTotalD = orgData.people.filter(p=>{
+    if(inativosData[p.id]?.inativo) return false;
+    if(seenNamesD.has(p.name)) return false;
+    seenNamesD.add(p.name); return true;
+  }).reduce((s,p)=>s+(salData[p.id]?.salary||0),0);
+
+  if (totalVerbaD > 0 || folhaTotalD > 0) {
+    const maxVal = Math.max(totalVerbaD, folhaTotalD) || 1;
+    const pVerba = Math.round(totalVerbaD/maxVal*100);
+    const pFolha = Math.round(folhaTotalD/maxVal*100);
+    const diffD = totalVerbaD - folhaTotalD;
+    const diffColor = diffD >= 0 ? 'var(--green)' : 'var(--red)';
+
+    html += `<div class="dash-card" style="grid-column:1/-1"><h3>Verba Total vs Folha Total</h3>
+      <div class="bar-row">
+        <div class="bar-label">Total Verba</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pVerba}%;background:#1A7A4A"><span>${fmt(totalVerbaD)}</span></div></div>
+        <div class="bar-val">${fmt(totalVerbaD)}</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Folha Total</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pFolha}%;background:#2B5BE0"><span>${fmt(folhaTotalD)}</span></div></div>
+        <div class="bar-val">${fmt(folhaTotalD)}</div>
+      </div>
+      <div style="margin-top:16px;padding:12px 16px;background:var(--surface2);border-radius:var(--radius);display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;color:var(--text2)">Diferença (Verba − Folha)</span>
+        <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:16px;color:${diffColor}">${diffD>=0?'+':''}${fmt(Math.round(diffD))}</span>
+      </div>
+    </div>`;
+  }
+
   html += '</div>'; // dash-grid
 
   document.getElementById('tab-dashboard').innerHTML = html;
@@ -1348,6 +1382,15 @@ function renderVerba() {
   });
   const folhaTotal = uniqueActivePeople.reduce((s,p) => s + (salData[p.id]?.salary||0), 0);
   const semSalario = uniqueActivePeople.filter(p => !salData[p.id]?.salary).length;
+  // Diferença verba vs folha total
+  const folhaDiff = totalVerba - folhaTotal;
+  let folhaStatus = '';
+  if (totalVerba > 0 && folhaTotal > 0) {
+    if (Math.abs(folhaDiff) < totalVerba * 0.05) folhaStatus = `<span class="status-pill status-ok">✓ Equilibrado</span>`;
+    else if (folhaDiff < 0) folhaStatus = `<span class="status-pill status-low">↓ Déficit de ${fmt(Math.abs(folhaDiff))}</span>`;
+    else folhaStatus = `<span class="status-pill status-high">↑ Sobra ${fmt(folhaDiff)}</span>`;
+  }
+
   let totalStatus = '';
   if (totalVerba > 0) {
     if (Math.abs(totalDiff) < totalVerba * 0.05) totalStatus = `<span class="status-pill status-ok">✓ Equilibrado</span>`;
@@ -1371,31 +1414,41 @@ function renderVerba() {
     </div>
   </div>
 
-  <div class="verba-kpi-grid" style="grid-template-columns:repeat(5,1fr)">
+  <div style="margin-bottom:8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3)">Verba vs Custo Alocado</div>
+  <div class="verba-kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
     <div class="kpi-card green">
       <div class="kpi-label">Total Verba</div>
       <div class="kpi-value" style="font-size:18px">${fmt(totalVerba)||'R$ 0'}</div>
-      <div class="kpi-sub">Soma de todos os clientes</div>
+      <div class="kpi-sub">${clients.length} clientes</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Custo Alocado</div>
       <div class="kpi-value" style="font-size:18px">${fmt(totalCusto)||'R$ 0'}</div>
       <div class="kpi-sub">Proporcional por cliente</div>
     </div>
-    <div class="kpi-card" style="border-left:3px solid var(--border2)">
-      <div class="kpi-label">Folha Total</div>
-      <div class="kpi-value" style="font-size:18px;color:var(--text)">${fmt(folhaTotal)||'R$ 0'}</div>
-      <div class="kpi-sub">${uniqueActivePeople.length} pessoas${semSalario ? ` · ${semSalario} sem salário` : ''}</div>
+    <div class="kpi-card" style="${totalDiff < 0 ? 'border-color:var(--red)' : totalDiff > 0 ? 'border-color:var(--green)' : ''}">
+      <div class="kpi-label">Diferença Alocado</div>
+      <div class="kpi-value" style="font-size:18px;color:${totalDiff >= 0 ? 'var(--green)' : 'var(--red)'}">${totalVerba > 0 ? (totalDiff>=0?'+':'')+fmt(Math.round(totalDiff)) : '—'}</div>
+      <div class="kpi-sub">${totalStatus||'—'}</div>
     </div>
-    <div class="kpi-card ${totalDiff >= 0 ? '' : 'red'}" style="${totalDiff < 0 ? 'border-color:var(--red)' : ''}">
-      <div class="kpi-label">Diferença</div>
-      <div class="kpi-value" style="font-size:18px;color:${totalDiff >= 0 ? 'var(--green)' : 'var(--red)'}">${totalVerba > 0 ? fmt(Math.abs(totalDiff)) : '—'}</div>
-      <div class="kpi-sub">${totalDiff >= 0 ? 'Sobrando' : 'Faltando'}</div>
+  </div>
+
+  <div style="margin-bottom:8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3)">Verba vs Folha Total</div>
+  <div class="verba-kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px">
+    <div class="kpi-card green">
+      <div class="kpi-label">Total Verba</div>
+      <div class="kpi-value" style="font-size:18px">${fmt(totalVerba)||'R$ 0'}</div>
+      <div class="kpi-sub">Soma de todos os clientes</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">Status Geral</div>
-      <div class="kpi-value" style="font-size:14px;margin-top:4px">${totalStatus||'—'}</div>
-      <div class="kpi-sub">${clients.length} clientes</div>
+      <div class="kpi-label">Folha Total</div>
+      <div class="kpi-value" style="font-size:18px">${fmt(folhaTotal)||'R$ 0'}</div>
+      <div class="kpi-sub">${uniqueActivePeople.length} pessoas${semSalario ? ` · ${semSalario} sem salário` : ''}</div>
+    </div>
+    <div class="kpi-card" style="${folhaDiff < 0 ? 'border-color:var(--red)' : folhaDiff > 0 ? 'border-color:var(--green)' : ''}">
+      <div class="kpi-label">Diferença Folha</div>
+      <div class="kpi-value" style="font-size:18px;color:${folhaDiff >= 0 ? 'var(--green)' : 'var(--red)'}">${totalVerba > 0 && folhaTotal > 0 ? (folhaDiff>=0?'+':'')+fmt(Math.round(folhaDiff)) : '—'}</div>
+      <div class="kpi-sub">${folhaStatus||'—'}</div>
     </div>
   </div>
 
