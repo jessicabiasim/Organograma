@@ -382,8 +382,7 @@
 </div>
 <div id="toast"></div>
 
-<!-- MODAL VERBA -->
-<div id="verba-modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;visibility:hidden;transition:opacity 0.2s,visibility 0.2s">
+<div id="verba-modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:500;opacity:0;visibility:hidden;transition:opacity 0.2s,visibility 0.2s">
   <div style="background:var(--surface);border-radius:var(--radius-lg);padding:28px;width:460px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
       <h3 id="verba-modal-title" style="font-size:16px;font-weight:600">Editar Verba</h3>
@@ -392,7 +391,7 @@
     <div id="verba-modal-body"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:24px;padding-top:16px;border-top:1px solid var(--border)">
       <button class="btn-secondary" onclick="closeVerbaModal()">Cancelar</button>
-      <button class="btn-save" onclick="saveVerbaModal()">Salvar</button>
+      <button onclick="saveVerbaModal()" style="background:var(--accent);color:var(--accent-fg);border:none;border-radius:var(--radius);padding:9px 20px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Salvar</button>
     </div>
   </div>
 </div>
@@ -1343,6 +1342,16 @@ function renderVerba() {
   });
 
   const totalDiff = totalVerba - totalCusto;
+
+  // Folha total real (todos os funcionários ativos com salário)
+  const seenNames = new Set();
+  const uniqueActivePeople = orgData.people.filter(p => {
+    if (inativosData[p.id]?.inativo) return false;
+    if (seenNames.has(p.name)) return false;
+    seenNames.add(p.name); return true;
+  });
+  const folhaTotal = uniqueActivePeople.reduce((s,p) => s + (salData[p.id]?.salary||0), 0);
+  const semSalario = uniqueActivePeople.filter(p => !salData[p.id]?.salary).length;
   let totalStatus = '';
   if (totalVerba > 0) {
     if (Math.abs(totalDiff) < totalVerba * 0.05) totalStatus = `<span class="status-pill status-ok">✓ Equilibrado</span>`;
@@ -1366,16 +1375,21 @@ function renderVerba() {
     </div>
   </div>
 
-  <div class="verba-kpi-grid">
+  <div class="verba-kpi-grid" style="grid-template-columns:repeat(5,1fr)">
     <div class="kpi-card green">
       <div class="kpi-label">Total Verba</div>
       <div class="kpi-value" style="font-size:18px">${fmt(totalVerba)||'R$ 0'}</div>
       <div class="kpi-sub">Soma de todos os clientes</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">Custo de Equipe</div>
+      <div class="kpi-label">Custo Alocado</div>
       <div class="kpi-value" style="font-size:18px">${fmt(totalCusto)||'R$ 0'}</div>
-      <div class="kpi-sub">Salários proporcionais</div>
+      <div class="kpi-sub">Proporcional por cliente</div>
+    </div>
+    <div class="kpi-card" style="border-left:3px solid var(--border2)">
+      <div class="kpi-label">Folha Total</div>
+      <div class="kpi-value" style="font-size:18px;color:var(--text)">${fmt(folhaTotal)||'R$ 0'}</div>
+      <div class="kpi-sub">${uniqueActivePeople.length} pessoas${semSalario ? ` · ${semSalario} sem salário` : ''}</div>
     </div>
     <div class="kpi-card ${totalDiff >= 0 ? '' : 'red'}" style="${totalDiff < 0 ? 'border-color:var(--red)' : ''}">
       <div class="kpi-label">Diferença</div>
