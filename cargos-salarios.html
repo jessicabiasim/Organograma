@@ -1269,21 +1269,25 @@ function renderVerba() {
   if (!currentVerbaMonth) currentVerbaMonth = getYearMonth();
   const ym = currentVerbaMonth;
 
-  // Pega clientes do organograma (usa orgData.clients para resolver nome a partir do ID)
+  // Pega clientes do organograma com ID e nome reais
   const clientMap = {};  // { id -> name }
   if (orgData?.clients) orgData.clients.forEach(c => { clientMap[c.id] = c.name; });
 
-  // IDs únicos de clientes usados nas pessoas
-  const orgClientIds = orgData ? [...new Set(orgData.people.map(p=>p.client).filter(Boolean))] : [];
-  const orgClientNames = orgClientIds.map(id => clientMap[id] || id);
+  // Lista de clientes como { id, name } — usa ID real do organograma
+  const orgClientList = orgData?.clients
+    ? orgData.clients.filter(c => orgData.people.some(p => p.client === c.id))
+    : [];
 
-  // Merge com clientes em verbaData
-  const allClientNames = new Set([...orgClientNames, ...Object.values(verbaData).map(v=>v.name)]);
-  const clients = [...allClientNames].sort();
+  // Merge com clientes em verbaData que não estão no organograma
+  const orgClientIds = new Set(orgClientList.map(c=>c.id));
+  const extraClients = Object.entries(verbaData)
+    .filter(([id]) => !orgClientIds.has(id))
+    .map(([id, v]) => ({ id, name: v.name }));
+
+  const clients = [...orgClientList, ...extraClients].sort((a,b)=>a.name.localeCompare(b.name));
 
   let totalVerba = 0, totalCusto = 0;
-  const rows = clients.map(name => {
-    const cid = Object.keys(verbaData).find(k=>verbaData[k].name===name) || btoa(name).replace(/=/g,'');
+  const rows = clients.map(({id: cid, name}) => {
     const verba = getVerbaCliente(cid, ym);
     const custo = calcCustoCliente(name, ym);
     const diff = verba - custo;
@@ -1406,6 +1410,7 @@ function changeVerbaMonth(dir) {
 function openVerbaModal(cid, clientName) {
   const ym = currentVerbaMonth;
   const isNew = !cid;
+  // Try to find real org client ID if cid looks like a generated one
   const v = cid ? (verbaData[cid] || {}) : {};
   const name = clientName || v.name || '';
   const verbaFixa = v.verbaFixa || '';
@@ -1448,7 +1453,13 @@ function saveVerbaModal() {
   const mesVal = verbaMes !== '' ? parseFloat(verbaMes) : null;
   const ym = currentVerbaMonth;
 
-  const cid = window._verbaIsNew ? ('c_' + name.toLowerCase().replace(/\s+/g,'_') + '_' + Date.now()) : currentEditId;
+  // Use org client ID if available, otherwise use existing cid or stable name-based key
+  let cid = currentEditId;
+  if (window._verbaIsNew) {
+    // For new manual clients, check if org has this client
+    const orgClient = orgData?.clients?.find(c => c.name.toLowerCase() === name.toLowerCase());
+    cid = orgClient ? orgClient.id : ('c_' + btoa(unescape(encodeURIComponent(name))).replace(/[^a-z0-9]/gi,'').toLowerCase().slice(0,12));
+  }
   if (!verbaData[cid]) verbaData[cid] = { name, meses:{} };
   verbaData[cid].name = name;
   verbaData[cid].verbaFixa = verbaFixa;
