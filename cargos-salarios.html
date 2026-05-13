@@ -1013,11 +1013,7 @@ function addArea() {
   saveSkills(); renderSkills();
   showToast(`Área "${nt}" criada!`);
 }
-function saveSkills() {
-  if (window._fbSalSet) {
-    window._fbSalSet({ salData, skillsDB: SKILLS_DB, inativosData, verbaData, _version:'sal_v1' });
-  }
-}
+function saveSkills() { masterSave(); }
 
 // ── SUMMARY ──────────────────────────────────────────────
 function updateSummary(allPeople, filteredPeople) {
@@ -1267,9 +1263,7 @@ function getVerbaCliente(clientId, ym) {
   return Number(v.verbaFixa || 0);
 }
 
-function saveVerba() {
-  if (window._fbSalSet) window._fbSalSet({salData, skillsDB:SKILLS_DB, inativosData, verbaData, _version:'sal_v1'});
-}
+function saveVerba() { masterSave(); }
 
 function renderVerba() {
   if (!currentVerbaMonth) currentVerbaMonth = getYearMonth();
@@ -1619,9 +1613,7 @@ function reativar(id) {
   renderCurrentTab();
 }
 
-function saveInativos() {
-  if (window._fbSalSet) window._fbSalSet({ salData, skillsDB: SKILLS_DB, inativosData, _version:'sal_v1' });
-}
+function saveInativos() { masterSave(); }
 
 function deleteHistory(personId, index) {
   if (!confirm('Excluir este reajuste do histórico?')) return;
@@ -1692,7 +1684,15 @@ function setStatus(msg,color) {
   el.style.opacity=msg?'1':'0';
   if(msg) setTimeout(()=>{if(el.textContent===msg)el.style.opacity='0';},3000);
 }
-function saveSalarios() { if(window._fbSalSet) window._fbSalSet({salData, skillsDB:SKILLS_DB, inativosData, verbaData, _version:'sal_v1'}); }
+function masterSave() {
+  if (!window._fbSalSet) { console.warn('Firebase ainda não pronto'); return; }
+  const payload = { salData, skillsDB: SKILLS_DB, inativosData, verbaData, _version:'sal_v1' };
+  window._fbSalSet(payload);
+}
+function saveSalarios() { masterSave(); }
+function saveInativos2() { masterSave(); }
+function saveSkills2() { masterSave(); }
+function saveVerba2() { masterSave(); }
 function loadFirebase(callback) {
   const s1=document.createElement('script');
   s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
