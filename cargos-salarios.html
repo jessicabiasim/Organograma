@@ -1217,29 +1217,37 @@ function nextMonth(ym) {
   return getYearMonth(d);
 }
 
+// Resolve clientId -> name
+function getClientName(clientId) {
+  if (!orgData?.clients) return clientId;
+  return orgData.clients.find(c=>c.id===clientId)?.name || clientId;
+}
+
 // Calcula custo de equipe por cliente no mês
 function calcCustoCliente(clientName, ym) {
   if (!orgData) return 0;
   let total = 0;
-  // Conta quantos clientes cada pessoa tem (para divisão igual)
+
+  // Conta quantos clientes distintos cada pessoa (por nome) tem
   const personClientCount = {};
+  const seenPersonClient = new Set();
   orgData.people.forEach(p => {
-    const clientsOfPerson = [...new Set(orgData.people.filter(pp => pp.name===p.name).map(pp => pp.client).filter(Boolean))];
-    personClientCount[p.name] = clientsOfPerson.length || 1;
+    if (!p.client) return;
+    const key = p.name + '|' + p.client;
+    if (seenPersonClient.has(key)) return;
+    seenPersonClient.add(key);
+    personClientCount[p.name] = (personClientCount[p.name]||0) + 1;
   });
 
-  // Pessoas únicas por cliente
+  // Pessoas únicas alocadas neste cliente
   const seenForClient = new Set();
   orgData.people.forEach(p => {
-    if ((p.client||'').toLowerCase() !== clientName.toLowerCase()) return;
+    const pClientName = getClientName(p.client||'');
+    if (pClientName.toLowerCase() !== clientName.toLowerCase()) return;
     if (seenForClient.has(p.name)) return;
     seenForClient.add(p.name);
-    const sd = Object.values(salData).find ? 
-      Object.entries(salData).find(([id]) => orgData.people.find(pp=>pp.id===id&&pp.name===p.name))?.[1] : null;
-    // Find salary by person name
-    const personIds = orgData.people.filter(pp=>pp.name===p.name).map(pp=>pp.id);
-    let salary = 0;
-    for (const id of personIds) { if (salData[id]?.salary) { salary = salData[id].salary; break; } }
+    // Acha salário pelo ID da pessoa
+    const salary = salData[p.id]?.salary || 0;
     const nClients = personClientCount[p.name] || 1;
     total += salary / nClients;
   });
@@ -1262,11 +1270,16 @@ function renderVerba() {
   if (!currentVerbaMonth) currentVerbaMonth = getYearMonth();
   const ym = currentVerbaMonth;
 
-  // Pega clientes do organograma
-  const orgClients = orgData ? [...new Set(orgData.people.map(p=>p.client).filter(Boolean))].sort() : [];
+  // Pega clientes do organograma (usa orgData.clients para resolver nome a partir do ID)
+  const clientMap = {};  // { id -> name }
+  if (orgData?.clients) orgData.clients.forEach(c => { clientMap[c.id] = c.name; });
 
-  // Merge com clientes em verbaData (pode ter clientes adicionados manualmente)
-  const allClientNames = new Set([...orgClients, ...Object.values(verbaData).map(v=>v.name)]);
+  // IDs únicos de clientes usados nas pessoas
+  const orgClientIds = orgData ? [...new Set(orgData.people.map(p=>p.client).filter(Boolean))] : [];
+  const orgClientNames = orgClientIds.map(id => clientMap[id] || id);
+
+  // Merge com clientes em verbaData
+  const allClientNames = new Set([...orgClientNames, ...Object.values(verbaData).map(v=>v.name)]);
   const clients = [...allClientNames].sort();
 
   let totalVerba = 0, totalCusto = 0;
@@ -1278,8 +1291,8 @@ function renderVerba() {
     totalVerba += verba;
     totalCusto += custo;
 
-    // Pessoas alocadas neste cliente
-    const pessoas = orgData ? [...new Set(orgData.people.filter(p=>p.client===name).map(p=>p.name))] : [];
+    // Pessoas alocadas neste cliente (resolve por nome)
+    const pessoas = orgData ? [...new Set(orgData.people.filter(p=>getClientName(p.client||'')===name).map(p=>p.name))] : [];
     const nPessoas = pessoas.length;
 
     let statusHtml = '<span style="color:var(--text3);font-size:11px">sem verba</span>';
