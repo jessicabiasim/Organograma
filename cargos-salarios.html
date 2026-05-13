@@ -452,6 +452,7 @@ function checkPassword() {
   if (val === APP_PASSWORD) {
     document.getElementById('lock-screen').classList.add('hidden');
     document.getElementById('app').style.display = 'block';
+    document.getElementById('tab-pessoas').innerHTML = '<div class="empty-state"><div style="font-size:24px;margin-bottom:12px">⏳</div><p>Conectando ao banco de dados...</p></div>';
     loadFirebase();
   } else {
     const inp = document.getElementById('lock-input');
@@ -1166,25 +1167,43 @@ function initFirebase() {
     const cfg={apiKey:"AIzaSyCfYFSZQEDSbB0Z6Cxzu2b7IyYxucqy8Zo",authDomain:"organograma-a2a1f.firebaseapp.com",databaseURL:"https://organograma-a2a1f-default-rtdb.firebaseio.com",projectId:"organograma-a2a1f",storageBucket:"organograma-a2a1f.firebasestorage.app",messagingSenderId:"798697234622",appId:"1:798697234622:web:02174f16cc714c54883eef"};
     if(!firebase.apps||!firebase.apps.length) firebase.initializeApp(cfg);
     const db=firebase.database();
-    db.ref('organograma').on('value',snap=>{
+
+    // Organograma (leitura)
+    db.ref('organograma').on('value', snap=>{
       const d=snap.val();
-      if(d&&d._version==='v4'){orgData=d;populateCargoFilter();renderCurrentTab();setStatus('✓ Sincronizado','#1A7A4A');}
+      if(d&&d._version==='v4'){
+        orgData=d;
+        populateCargoFilter();
+        renderCurrentTab();
+        setStatus('✓ Sincronizado','#1A7A4A');
+      }
+    }, err=>{
+      console.warn('Erro lendo organograma:',err);
+      setStatus('Erro: organograma','#C0392B');
+      document.getElementById('tab-pessoas').innerHTML = '<div class="empty-state"><p>Erro ao carregar organograma.<br><small>Verifique as regras do Firebase.</small></p></div>';
     });
+
+    // Salários (leitura + escrita)
     const fbSal=db.ref('salarios');
-    window._fbSalSet=d=>fbSal.set(d);
-    fbSal.on('value',snap=>{
+    window._fbSalSet=d=>fbSal.set(d).catch(e=>{ console.warn('Erro salvando:',e); showToast('Erro ao salvar — verifique as regras do Firebase.'); });
+    fbSal.on('value', snap=>{
       const d=snap.val();
       if(d&&d._version==='sal_v1'){
         salData=d.salData||{};
-        // Merge saved skills into SKILLS_DB (Firebase overrides defaults if present)
-        if(d.skillsDB) {
-          Object.assign(SKILLS_DB, d.skillsDB);
-          // Restore any areas in default that aren't in Firebase
-        }
+        if(d.skillsDB) Object.assign(SKILLS_DB, d.skillsDB);
         renderCurrentTab();
       }
+    }, err=>{
+      // Permissão negada no nó salarios — dados de salário não carregam mas organograma ainda funciona
+      console.warn('Erro lendo salarios (verifique regras Firebase):',err);
+      setStatus('Sem permissão: /salarios','#B45309');
+      showToast('⚠️ Erro de permissão no Firebase — ajuste as regras de segurança.');
     });
-  } catch(e){console.warn('Firebase erro:',e);setStatus('Erro Firebase','#C0392B');}
+
+  } catch(e){
+    console.warn('Firebase erro:',e);
+    setStatus('Erro Firebase','#C0392B');
+  }
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 </script>
