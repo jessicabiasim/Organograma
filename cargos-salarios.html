@@ -1257,10 +1257,29 @@ function calcCustoCliente(clientName, ym) {
 
 // Pega verba do cliente no mês (usa mensal específico ou fixo como fallback)
 function getVerbaCliente(clientId, ym) {
-  const v = verbaData[clientId];
+  // Tenta pelo ID direto
+  let v = verbaData[clientId];
+  // Se não achar, tenta pelo nome do cliente (compatibilidade com saves antigos)
+  if (!v) {
+    const clientName = getClientName(clientId);
+    const fallback = Object.values(verbaData).find(vv => 
+      vv.name && clientName && vv.name.toLowerCase() === clientName.toLowerCase()
+    );
+    if (fallback) v = fallback;
+  }
   if (!v) return 0;
   if (v.meses && v.meses[ym] != null) return Number(v.meses[ym]);
   return Number(v.verbaFixa || 0);
+}
+
+function getVerbaCid(clientId) {
+  // Retorna a chave real no verbaData para este cliente (por ID ou por nome)
+  if (verbaData[clientId]) return clientId;
+  const clientName = getClientName(clientId);
+  const entry = Object.entries(verbaData).find(([,v]) =>
+    v.name && clientName && v.name.toLowerCase() === clientName.toLowerCase()
+  );
+  return entry ? entry[0] : clientId;
 }
 
 function saveVerba() { masterSave(); }
@@ -1410,9 +1429,11 @@ function changeVerbaMonth(dir) {
 function openVerbaModal(cid, clientName) {
   const ym = currentVerbaMonth;
   const isNew = !cid;
-  // Try to find real org client ID if cid looks like a generated one
-  const v = cid ? (verbaData[cid] || {}) : {};
+  // Resolve chave real no verbaData (compatível com saves antigos por nome)
+  const realCid = cid ? getVerbaCid(cid) : null;
+  const v = realCid ? (verbaData[realCid] || {}) : {};
   const name = clientName || v.name || '';
+  if (realCid && realCid !== cid) window._verbaRealCid = realCid; else window._verbaRealCid = null;
   const verbaFixa = v.verbaFixa || '';
   const verbaMes = v.meses?.[ym] ?? '';
 
@@ -1453,12 +1474,16 @@ function saveVerbaModal() {
   const mesVal = verbaMes !== '' ? parseFloat(verbaMes) : null;
   const ym = currentVerbaMonth;
 
-  // Use org client ID if available, otherwise use existing cid or stable name-based key
-  let cid = currentEditId;
+  // Usa chave real existente, ou ID do organograma, ou gera estável pelo nome
+  let cid = window._verbaRealCid || currentEditId;
   if (window._verbaIsNew) {
-    // For new manual clients, check if org has this client
     const orgClient = orgData?.clients?.find(c => c.name.toLowerCase() === name.toLowerCase());
-    cid = orgClient ? orgClient.id : ('c_' + btoa(unescape(encodeURIComponent(name))).replace(/[^a-z0-9]/gi,'').toLowerCase().slice(0,12));
+    if (orgClient) cid = orgClient.id;
+    else {
+      // Chave estável baseada no nome (sem timestamp)
+      const nameKey = name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,16);
+      cid = 'v_' + nameKey;
+    }
   }
   if (!verbaData[cid]) verbaData[cid] = { name, meses:{} };
   verbaData[cid].name = name;
