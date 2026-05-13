@@ -382,6 +382,21 @@
 </div>
 <div id="toast"></div>
 
+<!-- MODAL VERBA -->
+<div id="verba-modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;visibility:hidden;transition:opacity 0.2s,visibility 0.2s">
+  <div style="background:var(--surface);border-radius:var(--radius-lg);padding:28px;width:460px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 id="verba-modal-title" style="font-size:16px;font-weight:600">Editar Verba</h3>
+      <button onclick="closeVerbaModal()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px">✕</button>
+    </div>
+    <div id="verba-modal-body"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:24px;padding-top:16px;border-top:1px solid var(--border)">
+      <button class="btn-secondary" onclick="closeVerbaModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveVerbaModal()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL INATIVOS -->
 <div id="inativos-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:300;opacity:0;visibility:hidden;transition:opacity 0.2s,visibility 0.2s">
   <div style="background:var(--surface);border-radius:var(--radius-lg);padding:28px;width:480px;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-lg)">
@@ -1429,62 +1444,66 @@ function changeVerbaMonth(dir) {
 function openVerbaModal(cid, clientName) {
   const ym = currentVerbaMonth;
   const isNew = !cid;
-  // Resolve chave real no verbaData (compatível com saves antigos por nome)
   const realCid = cid ? getVerbaCid(cid) : null;
   const v = realCid ? (verbaData[realCid] || {}) : {};
   const name = clientName || v.name || '';
-  if (realCid && realCid !== cid) window._verbaRealCid = realCid; else window._verbaRealCid = null;
   const verbaFixa = v.verbaFixa || '';
   const verbaMes = v.meses?.[ym] ?? '';
 
-  document.getElementById('modal-title').textContent = isNew ? 'Cadastrar cliente' : `Verba — ${name}`;
-  document.getElementById('modal-body').innerHTML = `
+  // Usa modal dedicado para verba
+  document.getElementById('verba-modal-overlay').style.cssText = 'opacity:1;visibility:visible';
+  document.getElementById('verba-modal-title').textContent = isNew ? 'Cadastrar cliente' : `Verba — ${name}`;
+  document.getElementById('verba-modal-body').innerHTML = `
     ${isNew ? `<div class="form-row">
       <label>Nome do cliente</label>
       <input type="text" id="v-name" class="form-input" placeholder="Ex: Helbor">
     </div>` : `<div style="padding:10px 14px;background:var(--surface2);border-radius:var(--radius);margin-bottom:16px;font-weight:600">${name}</div>`}
-
     <div class="form-row">
       <label>Verba Fixa Mensal (R$)</label>
-      <input type="number" id="v-fixa" class="form-input" placeholder="Valor padrão quando não há variação" value="${verbaFixa}" step="100">
+      <input type="number" id="v-fixa" class="form-input" placeholder="Valor padrão" value="${verbaFixa}" step="100">
       <div style="font-size:11px;color:var(--text3);margin-top:4px">Usado como base quando o mês não tem valor específico.</div>
     </div>
-
     <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
       <div class="section-label">Valor específico para ${fmtMonth(ym)}</div>
       <input type="number" id="v-mes" class="form-input" placeholder="Deixe vazio para usar o valor fixo" value="${verbaMes}" step="100">
       <div style="font-size:11px;color:var(--text3);margin-top:4px">Preencha apenas se a verba deste mês for diferente do fixo.</div>
     </div>
   `;
+  // Store state in dataset
+  const overlay = document.getElementById('verba-modal-overlay');
+  overlay.dataset.cid = realCid || '';
+  overlay.dataset.name = name;
+  overlay.dataset.isNew = isNew ? '1' : '';
+}
 
-  currentEditId = cid || ('new_' + Date.now());
-  window._verbaEditName = name;
-  window._verbaIsNew = isNew;
-  document.getElementById('modal-overlay').classList.add('open');
-  // Override save button
-  document.querySelector('.btn-save').onclick = saveVerbaModal;
+function closeVerbaModal() {
+  document.getElementById('verba-modal-overlay').style.cssText = 'opacity:0;visibility:hidden';
 }
 
 function saveVerbaModal() {
-  const isNew = window._verbaIsNew;
-  const name = isNew ? document.getElementById('v-name')?.value.trim() : window._verbaEditName;
+  const overlay = document.getElementById('verba-modal-overlay');
+  const isNew = !!overlay.dataset.isNew;
+  const name = isNew ? (document.getElementById('v-name')?.value.trim() || '') : overlay.dataset.name;
   if (!name) { showToast('Informe o nome do cliente.'); return; }
-  const verbaFixa = parseFloat(document.getElementById('v-fixa').value) || null;
-  const verbaMes = document.getElementById('v-mes').value;
-  const mesVal = verbaMes !== '' ? parseFloat(verbaMes) : null;
+
+  const verbaFixa = parseFloat(document.getElementById('v-fixa')?.value) || null;
+  const verbaMesVal = document.getElementById('v-mes')?.value;
+  const mesVal = (verbaMesVal !== '' && verbaMesVal != null) ? parseFloat(verbaMesVal) : null;
   const ym = currentVerbaMonth;
 
-  // Usa chave real existente, ou ID do organograma, ou gera estável pelo nome
-  let cid = window._verbaRealCid || currentEditId;
-  if (window._verbaIsNew) {
+  // Determina a chave correta
+  let cid = overlay.dataset.cid;
+  if (isNew || !cid) {
     const orgClient = orgData?.clients?.find(c => c.name.toLowerCase() === name.toLowerCase());
     if (orgClient) cid = orgClient.id;
     else {
-      // Chave estável baseada no nome (sem timestamp)
       const nameKey = name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,16);
       cid = 'v_' + nameKey;
     }
   }
+
+  console.log('saveVerbaModal: cid=', cid, 'name=', name, 'fixa=', verbaFixa, 'mes=', mesVal, 'ym=', ym);
+
   if (!verbaData[cid]) verbaData[cid] = { name, meses:{} };
   verbaData[cid].name = name;
   verbaData[cid].verbaFixa = verbaFixa;
@@ -1492,10 +1511,10 @@ function saveVerbaModal() {
   if (mesVal !== null) verbaData[cid].meses[ym] = mesVal;
   else delete verbaData[cid].meses[ym];
 
-  saveVerba();
-  closeModal();
-  // Restore original save button
-  document.querySelector('.btn-save').onclick = saveModal;
+  console.log('verbaData após update:', JSON.stringify(verbaData[cid]));
+
+  masterSave();
+  closeVerbaModal();
   renderVerba();
   showToast('Verba salva!');
 }
@@ -1721,9 +1740,23 @@ function setStatus(msg,color) {
   if(msg) setTimeout(()=>{if(el.textContent===msg)el.style.opacity='0';},3000);
 }
 function masterSave() {
-  if (!window._fbSalSet) { console.warn('Firebase ainda não pronto'); return; }
+  if (!window._fbSalSet) {
+    console.warn('Firebase ainda não pronto — _fbSalSet não existe');
+    showToast('⚠️ Firebase não conectado ainda. Tente novamente.');
+    return;
+  }
   const payload = { salData, skillsDB: SKILLS_DB, inativosData, verbaData, _version:'sal_v1' };
-  window._fbSalSet(payload);
+  console.log('masterSave chamado. verbaData:', JSON.stringify(verbaData).slice(0,200));
+  window._fbSalSet(payload)
+    .then(() => {
+      console.log('✓ Salvo no Firebase com sucesso');
+      setStatus('✓ Salvo', '#1A7A4A');
+    })
+    .catch(e => {
+      console.error('✗ Erro ao salvar:', e.message, e.code);
+      showToast('Erro ao salvar: ' + (e.message || e.code || 'desconhecido'));
+      setStatus('Erro ao salvar', '#C0392B');
+    });
 }
 function saveSalarios() { masterSave(); }
 function saveInativos2() { masterSave(); }
