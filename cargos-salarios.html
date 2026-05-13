@@ -417,6 +417,24 @@ function detectArea(roleName) {
   return null;
 }
 
+// Detecta nível pelo nome do cargo
+function detectLevel(roleName) {
+  const n = (roleName||'').toLowerCase();
+  // Diretor
+  if (n.includes('diret') || n.includes('diretor') || n.includes('diretora')) return 'Diretor';
+  // Líder (antes de sr para não confundir)
+  if (n.includes('líder') || n.includes('lider') || n.includes('lead') || n.includes('head') || n.includes('gerente') || n.includes('coordenador')) return 'Líder';
+  // Sênior
+  if (n.includes('sênior') || n.includes('senior') || n.includes(' sr') || n.includes(' sr.') || n.endsWith(' sr')) return 'Sênior';
+  // Pleno
+  if (n.includes('pleno') || n.includes(' pl') || n.includes(' pl.') || n.endsWith(' pl')) return 'Pleno';
+  // Júnior
+  if (n.includes('júnior') || n.includes('junior') || n.includes(' jr') || n.includes(' jr.') || n.endsWith(' jr')) return 'Júnior';
+  // Assistente
+  if (n.includes('assistente') || n.includes('assist') || n.includes('trainee') || n.includes('estagiário') || n.includes('estagiaria')) return 'Assistente';
+  return null;
+}
+
 function getRefRange(person, level) {
   if (!orgData || !level) return null;
   const role = orgData.roles.find(r => r.id === person.role);
@@ -535,7 +553,9 @@ function renderPessoas() {
     const sd = salData[p.id]||{};
     const salary = sd.salary;
     const level = sd.level||'';
-    const ref = getRefRange(p, level);
+    const role2 = orgData.roles.find(r=>r.id===p.role);
+    const effectiveLevel = level || detectLevel(role2?.name) || '';
+    const ref = getRefRange(p, effectiveLevel);
     const lastAdj = (sd.history||[]).slice(-1)[0]||null;
 
     // Faixa
@@ -566,7 +586,15 @@ function renderPessoas() {
         ${avatarHtml(p, 28)}${p.name}
       </div></td>
       <td style="color:var(--text2)">${rn}</td>
-      <td>${level ? `<span class="level-badge ${lvClass(level)}">${level}</span>` : '<span style="color:var(--text3);font-size:12px">—</span>'}</td>
+      <td>${(() => {
+        const role2 = orgData.roles.find(r=>r.id===p.role);
+        const displayLevel = level || detectLevel(role2?.name);
+        if (!displayLevel) return '<span style="color:var(--text3);font-size:12px">—</span>';
+        const isAuto = !level && displayLevel;
+        return `<span class="level-badge ${lvClass(displayLevel)}" title="${isAuto?'Detectado automaticamente pelo cargo — clique em Editar para confirmar':''}" style="${isAuto?'opacity:0.65;':''}">
+          ${displayLevel}${isAuto?' <span style="font-size:9px">auto</span>':''}
+        </span>`;
+      })()}</td>
       <td class="${!salary?'td-empty':'td-mono'}">${salary ? fmt(salary)+statusBadge : 'não cadastrado'}</td>
       <td>${faixaHtml}</td>
       <td style="font-size:12px;color:var(--text3)">${lastAdj ? fmtDate(lastAdj.date)+(lastAdj.reason?'<br><span style="color:var(--text2)">'+lastAdj.reason+'</span>':'') : '—'}</td>
@@ -1006,8 +1034,10 @@ function openModal(personId) {
   currentEditId = personId;
 
   const area = detectArea(role?.name);
+  // Usa nível salvo, ou tenta detectar pelo nome do cargo automaticamente
+  const autoLevel = sd.level || detectLevel(role?.name) || '';
   const levels = area&&AREA_LEVELS[area] ? AREA_LEVELS[area] : ['Assistente','Júnior','Pleno','Sênior','Líder','Diretor'];
-  const lvOpts = levels.map(l=>`<option value="${l}" ${sd.level===l?'selected':''}>${l}</option>`).join('');
+  const lvOpts = levels.map(l=>`<option value="${l}" ${autoLevel===l?'selected':''}>${l}</option>`).join('');
 
   document.getElementById('modal-title').textContent = 'Editar Salário';
   document.getElementById('modal-body').innerHTML = `
