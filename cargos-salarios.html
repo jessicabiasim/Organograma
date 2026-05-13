@@ -382,7 +382,7 @@
 </div>
 <div id="toast"></div>
 
-<div id="verba-modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:500;opacity:0;visibility:hidden;transition:opacity 0.2s,visibility 0.2s">
+<div id="verba-modal-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.2s,visibility 0.2s">
   <div style="background:var(--surface);border-radius:var(--radius-lg);padding:28px;width:460px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
       <h3 id="verba-modal-title" style="font-size:16px;font-weight:600">Editar Verba</h3>
@@ -1465,7 +1465,8 @@ function openVerbaModal(cid, clientName) {
   const verbaMes = v.meses?.[ym] ?? '';
 
   // Usa modal dedicado para verba
-  document.getElementById('verba-modal-overlay').style.cssText = 'opacity:1;visibility:visible';
+  const vOverlay = document.getElementById('verba-modal-overlay');
+  vOverlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:1;visibility:visible;transition:opacity 0.2s,visibility 0.2s';
   document.getElementById('verba-modal-title').textContent = isNew ? 'Cadastrar cliente' : `Verba — ${name}`;
   document.getElementById('verba-modal-body').innerHTML = `
     ${isNew ? `<div class="form-row">
@@ -1491,7 +1492,7 @@ function openVerbaModal(cid, clientName) {
 }
 
 function closeVerbaModal() {
-  document.getElementById('verba-modal-overlay').style.cssText = 'opacity:0;visibility:hidden';
+  document.getElementById('verba-modal-overlay').style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.2s,visibility 0.2s';
 }
 
 function saveVerbaModal() {
