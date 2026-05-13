@@ -262,9 +262,16 @@
     <div class="lock-icon">🔒</div>
     <h2>Área Restrita</h2>
     <p>Esta página contém informações confidenciais de cargos e salários.</p>
-    <input type="password" id="lock-input" class="lock-input" placeholder="Digite a senha" autocomplete="off">
-    <div id="lock-error" class="lock-error">Senha incorreta. Tente novamente.</div>
-    <button class="btn-primary" onclick="checkPassword()">Entrar</button>
+    <div class="form-row" style="margin-bottom:12px;text-align:left">
+      <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px">E-mail</label>
+      <input type="email" id="lock-email" class="lock-input" placeholder="seu@email.com" autocomplete="email" style="letter-spacing:normal">
+    </div>
+    <div class="form-row" style="margin-bottom:12px;text-align:left">
+      <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px">Senha</label>
+      <input type="password" id="lock-input" class="lock-input" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div id="lock-error" class="lock-error">E-mail ou senha incorretos. Tente novamente.</div>
+    <button class="btn-primary" id="lock-btn" onclick="checkPassword()">Entrar</button>
   </div>
 </div>
 
@@ -345,9 +352,6 @@
 
 <script>
 // ── SENHA ────────────────────────────────────────────────
-// ⚠️ Troque a senha abaixo antes de publicar!
-const APP_PASSWORD = 'madhit25@';
-
 // ── SKILLS DATA ──────────────────────────────────────────
 const SKILLS_DB = {
   "Produção": {
@@ -466,26 +470,61 @@ let currentSkillsArea = 'Atendimento';
 
 // ── SENHA ────────────────────────────────────────────────
 function checkPassword() {
-  const val = document.getElementById('lock-input').value;
-  if (val === APP_PASSWORD) {
-    document.getElementById('lock-screen').classList.add('hidden');
-    document.getElementById('app').style.display = 'block';
-    document.getElementById('tab-pessoas').innerHTML = '<div class="empty-state"><div style="font-size:24px;margin-bottom:12px">⏳</div><p>Conectando ao banco de dados...</p></div>';
-    loadFirebase();
+  const email = document.getElementById('lock-email').value.trim();
+  const pass = document.getElementById('lock-input').value;
+  const btn = document.getElementById('lock-btn');
+  if (!email || !pass) { showLockError('Preencha e-mail e senha.'); return; }
+
+  btn.textContent = 'Entrando...';
+  btn.disabled = true;
+
+  // Firebase ainda não carregado — carrega primeiro
+  if (!window._firebaseAuthReady) {
+    loadFirebase(() => doLogin(email, pass, btn));
   } else {
-    const inp = document.getElementById('lock-input');
-    inp.classList.add('error');
-    document.getElementById('lock-error').classList.add('show');
-    setTimeout(() => inp.classList.remove('error'), 400);
-    inp.value = ''; inp.focus();
+    doLogin(email, pass, btn);
   }
 }
-document.getElementById('lock-input').addEventListener('keydown', e => { if(e.key==='Enter') checkPassword(); });
+
+function doLogin(email, pass, btn) {
+  firebase.auth().signInWithEmailAndPassword(email, pass)
+    .then(() => {
+      // Auth ok — app já abre via onAuthStateChanged
+    })
+    .catch(err => {
+      btn.textContent = 'Entrar';
+      btn.disabled = false;
+      const inp = document.getElementById('lock-input');
+      inp.classList.add('error');
+      setTimeout(() => inp.classList.remove('error'), 400);
+      inp.value = '';
+      showLockError('E-mail ou senha incorretos. Tente novamente.');
+      inp.focus();
+    });
+}
+
+function showLockError(msg) {
+  const el = document.getElementById('lock-error');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('lock-input');
+  if (inp) inp.addEventListener('keydown', e => { if(e.key==='Enter') checkPassword(); });
+  const em = document.getElementById('lock-email');
+  if (em) em.addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('lock-input').focus(); });
+});
+
 function lockApp() {
+  if (window._firebaseAuthReady) firebase.auth().signOut();
   document.getElementById('lock-screen').classList.remove('hidden');
   document.getElementById('app').style.display = 'none';
   document.getElementById('lock-input').value = '';
+  document.getElementById('lock-email').value = '';
   document.getElementById('lock-error').classList.remove('show');
+  const btn = document.getElementById('lock-btn');
+  btn.textContent = 'Entrar'; btn.disabled = false;
 }
 
 // ── TABS ─────────────────────────────────────────────────
@@ -1181,53 +1220,75 @@ function setStatus(msg,color) {
   if(msg) setTimeout(()=>{if(el.textContent===msg)el.style.opacity='0';},3000);
 }
 function saveSalarios() { if(window._fbSalSet) window._fbSalSet({salData, skillsDB:SKILLS_DB, _version:'sal_v1'}); }
-function loadFirebase() {
+function loadFirebase(callback) {
   const s1=document.createElement('script');
   s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
   s1.onload=()=>{
     const s2=document.createElement('script');
     s2.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js';
-    s2.onload=()=>initFirebase();
+    s2.onload=()=>{
+      const s3=document.createElement('script');
+      s3.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js';
+      s3.onload=()=>{ initFirebase(callback); };
+      document.head.appendChild(s3);
+    };
     document.head.appendChild(s2);
   };
   document.head.appendChild(s1);
 }
-function initFirebase() {
+function initFirebase(callback) {
   try {
     const cfg={apiKey:"AIzaSyCfYFSZQEDSbB0Z6Cxzu2b7IyYxucqy8Zo",authDomain:"organograma-a2a1f.firebaseapp.com",databaseURL:"https://organograma-a2a1f-default-rtdb.firebaseio.com",projectId:"organograma-a2a1f",storageBucket:"organograma-a2a1f.firebasestorage.app",messagingSenderId:"798697234622",appId:"1:798697234622:web:02174f16cc714c54883eef"};
     if(!firebase.apps||!firebase.apps.length) firebase.initializeApp(cfg);
-    const db=firebase.database();
+    window._firebaseAuthReady = true;
 
-    // Organograma (leitura)
-    db.ref('organograma').on('value', snap=>{
-      const d=snap.val();
-      if(d&&d._version==='v4'){
-        orgData=d;
-        populateCargoFilter();
-        renderCurrentTab();
-        setStatus('✓ Sincronizado','#1A7A4A');
-      }
-    }, err=>{
-      console.warn('Erro lendo organograma:',err);
-      setStatus('Erro: organograma','#C0392B');
-      document.getElementById('tab-pessoas').innerHTML = '<div class="empty-state"><p>Erro ao carregar organograma.<br><small>Verifique as regras do Firebase.</small></p></div>';
-    });
+    // Se veio de um callback (login manual), executa
+    if (callback) { callback(); return; }
 
-    // Salários (leitura + escrita)
-    const fbSal=db.ref('salarios');
-    window._fbSalSet=d=>fbSal.set(d).catch(e=>{ console.warn('Erro salvando:',e); showToast('Erro ao salvar — verifique as regras do Firebase.'); });
-    fbSal.on('value', snap=>{
-      const d=snap.val();
-      if(d&&d._version==='sal_v1'){
-        salData=d.salData||{};
-        if(d.skillsDB) Object.assign(SKILLS_DB, d.skillsDB);
-        renderCurrentTab();
+    const db = firebase.database();
+
+    // Monitora estado de autenticação
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        // Usuário autenticado — abre o app
+        document.getElementById('lock-screen').classList.add('hidden');
+        document.getElementById('app').style.display = 'block';
+        document.getElementById('tab-pessoas').innerHTML = '<div class="empty-state"><div style="font-size:24px;margin-bottom:12px">⏳</div><p>Conectando ao banco de dados...</p></div>';
+
+        // Organograma (leitura aberta)
+        db.ref('organograma').on('value', snap=>{
+          const d=snap.val();
+          if(d&&d._version==='v4'){
+            orgData=d; populateCargoFilter(); renderCurrentTab();
+            setStatus('✓ Sincronizado','#1A7A4A');
+          }
+        }, err=>{
+          console.warn('Erro lendo organograma:',err);
+          setStatus('Erro: organograma','#C0392B');
+        });
+
+        // Salários (restrito — só autenticados)
+        const fbSal=db.ref('salarios');
+        window._fbSalSet=d=>fbSal.set(d).catch(e=>{ console.warn('Erro salvando:',e); showToast('Erro ao salvar.'); });
+        fbSal.on('value', snap=>{
+          const d=snap.val();
+          if(d&&d._version==='sal_v1'){
+            salData=d.salData||{};
+            if(d.skillsDB) Object.assign(SKILLS_DB, d.skillsDB);
+            renderCurrentTab();
+          }
+        }, err=>{
+          console.warn('Erro lendo salarios:',err);
+          setStatus('Sem permissão','#B45309');
+        });
+
+      } else {
+        // Não autenticado — mostra tela de login
+        document.getElementById('lock-screen').classList.remove('hidden');
+        document.getElementById('app').style.display = 'none';
+        const btn = document.getElementById('lock-btn');
+        if(btn){ btn.textContent='Entrar'; btn.disabled=false; }
       }
-    }, err=>{
-      // Permissão negada no nó salarios — dados de salário não carregam mas organograma ainda funciona
-      console.warn('Erro lendo salarios (verifique regras Firebase):',err);
-      setStatus('Sem permissão: /salarios','#B45309');
-      showToast('⚠️ Erro de permissão no Firebase — ajuste as regras de segurança.');
     });
 
   } catch(e){
@@ -1236,6 +1297,9 @@ function initFirebase() {
   }
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// Carrega Firebase ao abrir a página para verificar sessão ativa
+loadFirebase();
 </script>
 </body>
 </html>
