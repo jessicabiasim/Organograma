@@ -1685,9 +1685,10 @@ function checkRemovedPeople() {
     const inOrg = orgData.people.find(p=>p.id===id);
     const alreadyInativo = inativosData[id]?.inativo;
     if (!inOrg && !alreadyInativo) {
-      // Tenta achar o nome pelo inativosData ou pelo histórico
-      const name = inativosData[id]?.name || id;
-      removed.push({ id, name, sd });
+      // Tenta achar o nome pelo inativosData, salData._name, ou usa o ID
+      const name = inativosData[id]?.name || sd._name || `ID: ${id}`;
+      const roleName = sd._roleName || '';
+      removed.push({ id, name, roleName, sd });
     }
   });
   if (removed.length) showInativosModal(removed);
@@ -1701,7 +1702,7 @@ function showInativosModal(removed) {
       <input type="checkbox" checked data-id="${r.id}" style="accent-color:var(--blue);width:15px;height:15px">
       <div>
         <div style="font-weight:600;font-size:13px">${r.name}</div>
-        <div style="font-size:11px;color:var(--text3)">Último salário: ${fmt(r.sd.salary)||'—'}</div>
+        <div style="font-size:11px;color:var(--text3)">${r.roleName ? r.roleName+' · ' : ''}Último salário: ${fmt(r.sd.salary)||'—'}</div>
       </div>
     </label>`).join('');
   const ov = document.getElementById('inativos-overlay');
@@ -1723,6 +1724,7 @@ function confirmarInativos() {
     inativosData[id].inativo = true;
     inativosData[id].inativoDate = new Date().toISOString().slice(0,10);
     inativosData[id].name = person.name;
+    inativosData[id].roleName = person.roleName || '';
   });
   saveInativos();
   closeInativos();
