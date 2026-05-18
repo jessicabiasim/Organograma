@@ -242,7 +242,7 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
-    overflow: hidden;
+    overflow: visible; /* needed for sticky col-header to work */
     box-shadow: var(--shadow);
   }
   .col-header {
@@ -251,7 +251,10 @@
     display: flex;
     flex-direction: column;
     gap: 0;
-    position: relative;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   }
   .col-header-top {
     display: flex;
