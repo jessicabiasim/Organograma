@@ -603,6 +603,7 @@
   <button class="btn" onclick="openManageRoles()">⚙ Gerenciar cargos</button>
   <button class="btn" onclick="openManageAreas()">⚙ Gerenciar áreas</button>
   <div class="sep"></div>
+  <button class="btn" onclick="compressAllPhotos()" title="Reduz o tamanho das fotos salvas no banco — use se estiver com problemas para salvar">🗜 Comprimir fotos</button>
   <button class="btn danger" onclick="clearAll()">✕ Limpar tudo</button>
 </div>
 
@@ -668,6 +669,22 @@ function fmtDate(d) {
   return `${dd}/${m}/${y}`;
 }
 
+
+// ── IMAGE COMPRESSION ──
+function compressImage(dataUrl, maxWidth, maxHeight, quality, callback) {
+  const img = new Image();
+  img.onload = function() {
+    let w = img.width, h = img.height;
+    if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+    if (h > maxHeight) { w = Math.round(w * maxHeight / h); h = maxHeight; }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    callback(canvas.toDataURL('image/jpeg', quality));
+  };
+  img.src = dataUrl;
+}
 function save() {
   // Save locally as backup
   try { localStorage.setItem('org_v4', JSON.stringify({...state, _version:'v4'})); } catch(e) {}
@@ -733,8 +750,10 @@ function handleCompanyLogoFile(e) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    document.getElementById('f-company-logo').value = ev.target.result;
-    previewCompanyLogo(ev.target.result);
+    compressImage(ev.target.result, 400, 120, 0.82, compressed => {
+      document.getElementById('f-company-logo').value = compressed;
+      previewCompanyLogo(compressed);
+    });
   };
   reader.readAsDataURL(file);
 }
@@ -1095,10 +1114,12 @@ function handlePersonPhotoFile(e) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    document.getElementById('f-photo').value = ev.target.result;
-    const img = document.getElementById('f-preview');
-    img.src = ev.target.result;
-    img.style.display = 'block';
+    compressImage(ev.target.result, 200, 200, 0.75, compressed => {
+      document.getElementById('f-photo').value = compressed;
+      const img = document.getElementById('f-preview');
+      img.src = compressed;
+      img.style.display = 'block';
+    });
   };
   reader.readAsDataURL(file);
 }
@@ -1323,8 +1344,10 @@ function handleLogoFile(e) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    document.getElementById('f-logo').value = ev.target.result;
-    previewLogo(ev.target.result);
+    compressImage(ev.target.result, 300, 150, 0.80, compressed => {
+      document.getElementById('f-logo').value = compressed;
+      previewLogo(compressed);
+    });
   };
   reader.readAsDataURL(file);
 }
@@ -1511,6 +1534,52 @@ function confirmModal() {
     }
   }
   closeModalDirect(); save(); render();
+}
+
+
+/* ── COMPRESS ALL PHOTOS ── */
+async function compressAllPhotos() {
+  const isBase64 = s => s && s.startsWith('data:image');
+  
+  // Collect all items that have base64 photos
+  const tasks = [];
+  
+  state.people.forEach((p, i) => {
+    if (isBase64(p.photo)) tasks.push({ type: 'person', idx: i, field: 'photo', val: p.photo });
+  });
+  state.clients.forEach((c, i) => {
+    if (isBase64(c.logo)) tasks.push({ type: 'client', idx: i, field: 'logo', val: c.logo });
+  });
+  if (isBase64(state.companyLogo)) {
+    tasks.push({ type: 'company', val: state.companyLogo });
+  }
+
+  if (!tasks.length) {
+    showToast('Nenhuma foto base64 encontrada.');
+    return;
+  }
+
+  showToast(`Comprimindo ${tasks.length} imagem(ns)...`);
+
+  let done = 0;
+  for (const task of tasks) {
+    await new Promise(resolve => {
+      const maxW = task.type === 'person' ? 200 : task.type === 'company' ? 400 : 300;
+      const maxH = task.type === 'person' ? 200 : task.type === 'company' ? 120 : 150;
+      const q    = task.type === 'person' ? 0.75 : 0.80;
+      compressImage(task.val, maxW, maxH, q, compressed => {
+        if (task.type === 'person')  state.people[task.idx].photo = compressed;
+        if (task.type === 'client')  state.clients[task.idx].logo = compressed;
+        if (task.type === 'company') state.companyLogo = compressed;
+        done++;
+        resolve();
+      });
+    });
+  }
+
+  save();
+  render();
+  showToast(`✓ ${done} imagem(ns) comprimida(s) e salvas!`);
 }
 
 /* ── EXPORT / IMPORT ── */
