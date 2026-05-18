@@ -50,9 +50,6 @@
     align-items: center;
     justify-content: space-between;
     height: 72px;
-    position: sticky;
-    top: 0;
-    z-index: 50;
   }
   .header-logo-wrap {
     display: flex;
@@ -152,12 +149,58 @@
   .btn-icon { font-size: 14px; line-height: 1; }
 
   /* ── BOARD ── */
+  /* Frozen logo row */
+  .board-headers-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--bg);
+    overflow-x: hidden; /* synced via JS */
+    border-bottom: 1px solid var(--border);
+    padding: 12px 28px 0;
+  }
+  .board-headers {
+    display: flex;
+    gap: 0;
+    min-width: max-content;
+    align-items: flex-end;
+  }
+  /* col-header placeholder in frozen row */
+  .col-header-frozen {
+    width: 220px;
+    flex-shrink: 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    overflow: hidden;
+    margin-right: 0;
+  }
+  /* leader group placeholder in frozen row */
+  .leader-frozen-wrap {
+    display: flex;
+    flex-direction: column;
+    margin-right: 16px;
+  }
+  .leader-frozen-header {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    overflow: hidden;
+  }
+  .leader-frozen-cols {
+    display: flex;
+    gap: 12px;
+    padding: 0 12px;
+    background: var(--surface2);
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+  .no-leader-frozen-wrap {
+    display: flex;
+    gap: 12px;
+  }
+
+  /* Scrollable body */
   .board-wrap {
-    padding: 24px 28px;
+    padding: 0 28px 24px;
     overflow-x: auto;
-    overflow-y: auto;
-    height: calc(100vh - 144px); /* fills remaining viewport, header+toolbar frozen above */
-    box-sizing: border-box;
+    min-height: calc(100vh - 176px);
   }
   .board {
     display: flex;
@@ -172,6 +215,10 @@
     flex-direction: column;
     gap: 0;
     margin-right: 16px;
+  }
+  /* leader-columns has rounded bottom, no top radius since header is frozen */
+  .leader-group .leader-columns {
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   }
   .leader-group-header {
     display: flex;
@@ -242,7 +289,7 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
-    overflow: visible; /* needed for sticky col-header to work */
+    overflow: hidden;
     box-shadow: var(--shadow);
   }
   .col-header {
@@ -251,9 +298,7 @@
     display: flex;
     flex-direction: column;
     gap: 0;
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    position: relative;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   }
   .col-header-top {
@@ -612,7 +657,10 @@
   <button class="btn danger" onclick="clearAll()">✕ Limpar tudo</button>
 </div>
 
-<div class="board-wrap">
+<div class="board-headers-wrap" id="board-headers-wrap">
+  <div class="board-headers" id="board-headers"></div>
+</div>
+<div class="board-wrap" id="board-wrap">
   <div class="board" id="board"></div>
 </div>
 
@@ -775,22 +823,24 @@ function render() {
   renderCompanyLogo();
   const board = document.getElementById('board');
   board.innerHTML = '';
+  const headers = document.getElementById('board-headers');
+  headers.innerHTML = '';
 
   // Render leader groups first
   state.leaders.forEach(leader => {
     const leaderClients = state.clients.filter(c => c.leader === leader.id);
-    if (!leaderClients.length && state.leaders.length > 0) return; // skip empty groups unless editing
+    if (!leaderClients.length && state.leaders.length > 0) return;
 
-    const group = document.createElement('div');
-    group.className = 'leader-group';
-
+    // ── Frozen header for this leader group ──
+    const lColor = leader.color || '#1A1916';
+    const lTextColor = leader.textColor || '#ffffff';
     const [lbg, lfg] = colorFor(leader.name);
     const avatarHtml = `<div class="leader-avatar" style="background:rgba(255,255,255,0.18);color:#fff;border-color:rgba(255,255,255,0.25)">${initials(leader.name)}</div>`;
 
-    const lColor = leader.color || '#1A1916';
-    const lTextColor = leader.textColor || '#ffffff';
-    group.innerHTML = `
-      <div class="leader-group-header" style="background:${lColor}">
+    const frozenLeader = document.createElement('div');
+    frozenLeader.className = 'leader-frozen-wrap';
+    frozenLeader.innerHTML = `
+      <div class="leader-frozen-header" style="background:${lColor};padding:10px 14px;display:flex;align-items:center;gap:10px;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
         ${avatarHtml}
         <div class="leader-info">
           <div class="leader-name" style="color:${lTextColor}">${leader.name}</div>
@@ -801,17 +851,30 @@ function render() {
           <button class="leader-icon-btn" onclick="deleteLeader('${leader.id}')" title="Remover líder" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.2);color:${lTextColor}">✕</button>
         </div>
       </div>
-      <div class="leader-columns" id="leader-cols-${leader.id}"></div>`;
+      <div class="leader-frozen-cols" id="frozen-leader-cols-${leader.id}"></div>`;
+    const frozenCols = frozenLeader.querySelector(`#frozen-leader-cols-${leader.id}`);
+    leaderClients.forEach(cl => frozenCols.appendChild(makeClientColHeader(cl)));
+    headers.appendChild(frozenLeader);
 
+    // ── Board body for this leader group ──
+    const group = document.createElement('div');
+    group.className = 'leader-group';
+    group.innerHTML = `<div class="leader-columns" id="leader-cols-${leader.id}"></div>`;
     const colsWrap = group.querySelector(`#leader-cols-${leader.id}`);
     leaderClients.forEach(cl => colsWrap.appendChild(makeClientCol(cl)));
-
     board.appendChild(group);
   });
 
   // Clients without a leader
   const unassignedClients = state.clients.filter(c => !c.leader);
   if (unassignedClients.length) {
+    // Frozen headers
+    const frozenNoLeader = document.createElement('div');
+    frozenNoLeader.className = 'no-leader-frozen-wrap';
+    unassignedClients.forEach(cl => frozenNoLeader.appendChild(makeClientColHeader(cl)));
+    headers.appendChild(frozenNoLeader);
+
+    // Body
     const wrap = document.createElement('div');
     wrap.className = 'no-leader-wrap';
     unassignedClients.forEach(cl => wrap.appendChild(makeClientCol(cl)));
@@ -829,31 +892,30 @@ function render() {
   requestAnimationFrame(() => alignDropZones());
 }
 
-function makeClientCol(cl) {
-  const col = document.createElement('div');
-  col.className = 'col';
-
+function makeClientColHeader(cl) {
   const headerColor = cl.color || '#1A1916';
-  const logoHtml = cl.logo
-    ? `<img class="col-logo" src="${cl.logo}" alt="${cl.name}">`
-    : '';
-
   const logoOrName = cl.logo
     ? `<img class="col-logo" src="${cl.logo}" alt="${cl.name}">`
     : `<span class="col-header-name-fallback" title="${cl.name}">${cl.name}</span>`;
-
-  col.innerHTML = `
-    <div class="col-header" style="background:${headerColor}">
+  const div = document.createElement('div');
+  div.className = 'col-header-frozen';
+  div.innerHTML = `
+    <div class="col-header" style="background:${headerColor};border-radius:var(--radius-xl) var(--radius-xl) 0 0">
       <div class="col-header-top">
-        <div class="col-header-logo-center">
-          ${logoOrName}
-        </div>
+        <div class="col-header-logo-center">${logoOrName}</div>
         <div class="col-header-actions" style="position:absolute;top:8px;right:8px">
           <button class="col-icon-btn" onclick="editClient('${cl.id}')" title="Editar">✎</button>
         </div>
       </div>
-    </div>
-    <div class="col-body" id="col-body-${cl.id}"></div>`;
+    </div>`;
+  return div;
+}
+
+function makeClientCol(cl) {
+  const col = document.createElement('div');
+  col.className = 'col';
+
+  col.innerHTML = `<div class="col-body" id="col-body-${cl.id}"></div>`;
 
   const body = col.querySelector('.col-body');
 
@@ -1786,6 +1848,18 @@ function loadFirebase() {
   s1.onerror = () => console.warn('Firebase app SDK não carregou (modo offline)');
   document.head.appendChild(s1);
 }
+
+
+// ── SYNC HORIZONTAL SCROLL ──
+document.addEventListener('DOMContentLoaded', () => {
+  const boardWrap = document.getElementById('board-wrap');
+  const headersWrap = document.getElementById('board-headers-wrap');
+  if (boardWrap && headersWrap) {
+    boardWrap.addEventListener('scroll', () => {
+      headersWrap.scrollLeft = boardWrap.scrollLeft;
+    });
+  }
+});
 
 loadFirebase();
 </script>
