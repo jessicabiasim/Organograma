@@ -155,7 +155,9 @@
   .board-wrap {
     padding: 24px 28px;
     overflow-x: auto;
-    min-height: calc(100vh - 176px);
+    overflow-y: auto;
+    height: calc(100vh - 144px); /* fills remaining viewport, header+toolbar frozen above */
+    box-sizing: border-box;
   }
   .board {
     display: flex;
@@ -345,7 +347,7 @@
   .col-body { padding: 10px; }
 
   /* ── ROLE ROW ── */
-  .role-row { margin-bottom: 8px; }
+  .role-row { margin-bottom: 0; padding-bottom: 8px; }
   .role-label {
     font-size: 9px;
     font-weight: 600;
@@ -371,7 +373,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    transition: all 0.12s;
+    transition: min-height 0.15s, border-color 0.12s, background 0.12s;
   }
   .drop-zone.has-cards { border-color: transparent; background: transparent; }
   .drop-zone.drag-over {
@@ -671,7 +673,9 @@ function fmtDate(d) {
 
 
 // ── IMAGE COMPRESSION ──
-function compressImage(dataUrl, maxWidth, maxHeight, quality, callback) {
+// keepTransparency=true → PNG (logos, company logo)
+// keepTransparency=false → JPEG with white bg (person photos, smaller file)
+function compressImage(dataUrl, maxWidth, maxHeight, quality, callback, keepTransparency) {
   const img = new Image();
   img.onload = function() {
     let w = img.width, h = img.height;
@@ -680,8 +684,13 @@ function compressImage(dataUrl, maxWidth, maxHeight, quality, callback) {
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d');
+    if (!keepTransparency) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, w, h);
+    }
     ctx.drawImage(img, 0, 0, w, h);
-    callback(canvas.toDataURL('image/jpeg', quality));
+    const format = keepTransparency ? 'image/png' : 'image/jpeg';
+    callback(canvas.toDataURL(format, quality));
   };
   img.src = dataUrl;
 }
@@ -750,10 +759,10 @@ function handleCompanyLogoFile(e) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    compressImage(ev.target.result, 400, 120, 0.82, compressed => {
+    compressImage(ev.target.result, 400, 120, 0.90, compressed => {
       document.getElementById('f-company-logo').value = compressed;
       previewCompanyLogo(compressed);
-    });
+    }, true); // keepTransparency=true → PNG
   };
   reader.readAsDataURL(file);
 }
@@ -812,6 +821,9 @@ function render() {
   const unassigned = state.people.filter(p => !p.client);
   unassigned.forEach(p => pool.appendChild(makeCard(p)));
   document.getElementById('unassigned-count').textContent = unassigned.length;
+
+  // Align drop-zone heights across all columns
+  requestAnimationFrame(() => alignDropZones());
 }
 
 function makeClientCol(cl) {
@@ -1344,10 +1356,10 @@ function handleLogoFile(e) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    compressImage(ev.target.result, 300, 150, 0.80, compressed => {
+    compressImage(ev.target.result, 300, 150, 0.90, compressed => {
       document.getElementById('f-logo').value = compressed;
       previewLogo(compressed);
-    });
+    }, true); // keepTransparency=true → PNG
   };
   reader.readAsDataURL(file);
 }
@@ -1566,20 +1578,56 @@ async function compressAllPhotos() {
     await new Promise(resolve => {
       const maxW = task.type === 'person' ? 200 : task.type === 'company' ? 400 : 300;
       const maxH = task.type === 'person' ? 200 : task.type === 'company' ? 120 : 150;
-      const q    = task.type === 'person' ? 0.75 : 0.80;
+      const q    = task.type === 'person' ? 0.75 : 0.90;
+      const keepAlpha = task.type !== 'person'; // logos/company keep transparency
       compressImage(task.val, maxW, maxH, q, compressed => {
         if (task.type === 'person')  state.people[task.idx].photo = compressed;
         if (task.type === 'client')  state.clients[task.idx].logo = compressed;
         if (task.type === 'company') state.companyLogo = compressed;
         done++;
         resolve();
-      });
+      }, keepAlpha);
     });
   }
 
   save();
   render();
   showToast(`✓ ${done} imagem(ns) comprimida(s) e salvas!`);
+}
+
+
+/* ── ALIGN DROP-ZONES BY ROW ── */
+function alignDropZones() {
+  // Reset all min-heights first
+  document.querySelectorAll('.drop-zone').forEach(dz => {
+    dz.style.minHeight = '';
+  });
+
+  // Group drop-zones by their area (data-area attribute), within each leader group or no-leader-wrap
+  // We align per-group (each leader block + the no-leader-wrap are independent grids)
+  const groups = [
+    ...document.querySelectorAll('.leader-columns'),
+    document.getElementById('board') ? document.querySelector('.no-leader-wrap') : null
+  ].filter(Boolean);
+
+  // Also handle the case where all clients are ungrouped (no leaders)
+  const allGroups = document.querySelectorAll('.leader-columns, .no-leader-wrap');
+
+  // For each unique area id, find all drop-zones across ALL groups and equalize
+  const areaMap = {};
+  document.querySelectorAll('.drop-zone[data-area]').forEach(dz => {
+    const areaId = dz.dataset.area;
+    if (!areaMap[areaId]) areaMap[areaId] = [];
+    areaMap[areaId].push(dz);
+  });
+
+  Object.values(areaMap).forEach(zones => {
+    // Find tallest natural height
+    const maxH = Math.max(...zones.map(dz => dz.scrollHeight));
+    zones.forEach(dz => {
+      dz.style.minHeight = maxH + 'px';
+    });
+  });
 }
 
 /* ── EXPORT / IMPORT ── */
@@ -1707,6 +1755,7 @@ function initFirebase() {
         if (!state.areas || !state.areas.length) state.areas = AREAS_SEED;
         if (!state.companyLogo) state.companyLogo = COMPANY_LOGO_DEFAULT;
         render();
+        requestAnimationFrame(() => alignDropZones());
         setStatus('✓ Sincronizado', '#1A7A4A');
       } else if (data === null) {
         // Banco vazio — envia dados iniciais
